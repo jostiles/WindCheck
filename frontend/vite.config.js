@@ -12,6 +12,7 @@ export default defineConfig({
       '/ingest':      'http://localhost:8000',
       '/health':      'http://localhost:8000',
       '/map-data':    'http://localhost:8000',
+      '/stats':       'http://localhost:8000',
     },
   },
 })

@@ -194,6 +194,16 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/stats")
+def stats():
+    with get_session() as session:
+        row = session.execute(
+            text("SELECT MIN(observation_time) FROM metars")
+        ).fetchone()
+        oldest = row[0] if row else None
+    return {"tracking_since": oldest}
+
+
 # ── /airports ───────────────────────────────────────────────────────────────
 
 @app.get("/airports", response_model=list[LeaderboardEntry])

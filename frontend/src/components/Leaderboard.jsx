@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { fetchLeaderboard } from '../api'
+import { fetchLeaderboard, fetchStats } from '../api'
 
 const COLUMNS = [
   { key: 'rank',                   label: '#',          sortable: false },
@@ -27,11 +27,21 @@ function ScoreCell({ value }) {
 }
 
 export default function Leaderboard({ onSelectAirport }) {
-  const [rows,    setRows]    = useState([])
-  const [sortBy,  setSortBy]  = useState('overall_score')
-  const [minObs,  setMinObs]  = useState(1)
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState(null)
+  const [rows,         setRows]         = useState([])
+  const [sortBy,       setSortBy]       = useState('overall_score')
+  const [minObs,       setMinObs]       = useState(1)
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState(null)
+  const [trackingSince, setTrackingSince] = useState(null)
+
+  useEffect(() => {
+    fetchStats().then(s => {
+      if (s.tracking_since) {
+        const d = new Date(s.tracking_since)
+        setTrackingSince(d.toUTCString().replace(' GMT', 'Z').slice(5, 17))
+      }
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -50,7 +60,14 @@ export default function Leaderboard({ onSelectAirport }) {
     <div>
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div className="section-title" style={{ marginBottom: 0 }}>Airport leaderboard</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          <div className="section-title" style={{ marginBottom: 0 }}>Airport leaderboard</div>
+          {trackingSince && (
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+              Tracking data since {trackingSince}
+            </span>
+          )}
+        </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', marginLeft: 'auto' }}>
           Min observations
           <select
