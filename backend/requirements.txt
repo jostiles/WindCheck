@@ -1,0 +1,20 @@
+# TAF Accuracy — backend dependencies
+
+# Web framework + server
+fastapi>=0.111
+uvicorn[standard]>=0.29
+
+# HTTP client (async-capable, used synchronously in fetch.py)
+httpx>=0.27
+
+# METAR decoding
+metar>=1.9.0
+
+# Database
+sqlalchemy>=2.0
+
+# Data validation (FastAPI models)
+pydantic>=2.7
+
+# Optional: pretty logging
+rich>=13

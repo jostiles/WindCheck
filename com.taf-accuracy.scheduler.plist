@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd service definition for the TAF accuracy ingest scheduler.
+
+  Install (runs automatically at login, starts now):
+    cp com.taf-accuracy.scheduler.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.taf-accuracy.scheduler.plist
+
+  Check status:
+    launchctl list | grep taf
+
+  Stop:
+    launchctl unload ~/Library/LaunchAgents/com.taf-accuracy.scheduler.plist
+
+  Logs:
+    tail -f /Users/jordanstiles/Documents/taf-accuracy/logs/scheduler.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.taf-accuracy.scheduler</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/anaconda3/bin/python3</string>
+    <string>/Users/jordanstiles/Documents/taf-accuracy/backend/scheduler.py</string>
+    <string>--interval</string>
+    <string>60</string>
+    <string>--workers</string>
+    <string>6</string>
+    <string>--hours</string>
+    <string>30</string>
+  </array>
+
+  <!-- Run at login and keep alive if it crashes -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Restart immediately on exit -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/jordanstiles/Documents/taf-accuracy/logs/scheduler-stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/jordanstiles/Documents/taf-accuracy/logs/scheduler-stderr.log</string>
+
+  <!-- Working directory -->
+  <key>WorkingDirectory</key>
+  <string>/Users/jordanstiles/Documents/taf-accuracy/backend</string>
+</dict>
+</plist>

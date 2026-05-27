@@ -1,0 +1,168 @@
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 260355Z AUTO 00000KT 10SM CLR M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 260255Z AUTO 00000KT 10SM CLR M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 260155Z AUTO 00000KT 10SM CLR M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 260055Z AUTO 20004KT 10SM CLR M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 252355Z AUTO 18004KT 10SM CLR M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 252255Z AUTO 00000KT 10SM CLR M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 252155Z AUTO 17003KT 10SM FEW032 SCT039 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 252055Z AUTO 20006KT 7SM BKN065 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 252040Z AUTO 19006KT 7SM FEW020 SCT025 SCT036 BKN046 BKN060 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 252025Z AUTO 17007KT 10SM BKN022 BKN035 M M RMK AO2 CIG 022V130 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 251955Z AUTO 15005KT 10SM FEW090 SCT130 SCT170 BKN210 M M RMK AO2 LTG DSNT SW TSB1855E1856 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251929Z AUTO 12003KT 7SM BKN048 M M RMK AO2 LTG DSNT SW TSB1855E1856 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251914Z AUTO 15004KT 1 1/2SM BR OVC043 M M RMK AO2 VIS 1V1 1/2 TSB1855E1856 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251908Z AUTO 14005KT 1SM VCTS BR OVC040 M M RMK AO2 TSB1855E1856 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251856Z AUTO 19006KT 1 1/2SM VCTS BR BKN044 OVC055 M M RMK AO2 VIS 1 1/2V2 1/4 TSE56 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 251855Z AUTO 19007KT 1 5/8SM TS BR BKN044 OVC055 M M RMK AO2 VIS 1 5/8V2 1/4 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251852Z AUTO 21009KT 2SM TS BR BKN047 OVC065 M M RMK AO2 VIS 2V2 3/4 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251837Z AUTO 35003KT 7SM TS BKN031 BKN045 BKN050 OVC065 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251822Z AUTO 10006KT 2 1/4SM TS BR BKN026 BKN065 M M RMK AO2 VIS 1/8V2 1/4 CIG 014V026 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251810Z AUTO 24007G25KT 1/8SM TS FG BKN011 BKN055 BKN065 M M RMK AO2 VIS 1/8V8 CIG 011V070 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 251755Z AUTO 14005KT 10SM TS FEW055 FEW070 SCT130 SCT160 M M RMK AO2 TSE01TSB04E32TSB51 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251751Z AUTO 12005KT 10SM TS FEW060 SCT130 SCT160 SCT200 M M RMK AO2 TSB1655E01TSB04E32TSB51 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251732Z AUTO 00000KT 10SM VCTS FEW039 FEW170 SCT210 M M RMK AO2 TSE01TSB04E32 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251722Z AUTO 00000KT 9SM TS SCT025 SCT210 M M RMK AO2 TSE01TSB04 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251707Z AUTO 31003G23KT 1 1/4SM TS BR FEW018 BKN025 M M RMK AO2 VIS 5/8V7 TSB1655E01TSB04 CIG 018V025 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251704Z AUTO 31005G25KT 7/8SM TS BR BKN018 BKN025 M M RMK AO2 VIS 7/8V9 TSB1655E01TSB04 CIG 018V025 BKN018 V SCT SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251702Z AUTO 29012G25KT 4SM HZ SCT013 BKN020 BKN027 M M RMK AO2 WSHFT 00 LTG DSNT SE-S TSE01 CIG 020V110 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251701Z AUTO 27013G25KT 5SM HZ SCT013 BKN023 M M RMK AO2 LTG DSNT SE-S TSE01 CIG 020V110 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251700Z AUTO 23015G25KT 6SM TS HZ SCT016 BKN025 M M RMK AO2 WSHFT 1659 CIG 020V110 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251658Z AUTO 19014G25KT 8SM TS SCT018 BKN025 BKN200 M M RMK AO2 WSHFT 56 CIG 025V110 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 251655Z AUTO 25003KT 10SM TS SCT021 BKN027 BKN210 M M RMK AO2 TSE1555TSB47 CIG 027V110 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251647Z AUTO 00000KT 10SM TS SCT021 BKN100 BKN120 BKN160 BKN200 M M RMK AO2 TSB47 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 251555Z AUTO 18003KT 8SM BKN030 BKN049 BKN110 BKN160 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251552Z AUTO 18004KT 7SM FEW020 BKN030 BKN049 BKN110 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251537Z AUTO 24004KT 1 1/8SM BR OVC033 M M RMK AO2 VIS 3/4V4 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251522Z AUTO 27007KT 1 5/8SM BR OVC029 M M RMK AO2 VIS 1/2V1 5/8 CIG 024V029 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251516Z AUTO 26008G17KT 1/2SM FG BKN024 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251501Z AUTO 26012KT 3/4SM BR FEW007 BKN018 BKN025 M M RMK AO2 VIS 3/4V1 3/4 CIG 018V024 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 251455Z AUTO 31009KT 1 1/2SM BR FEW007 FEW013 BKN020 BKN026 M M RMK AO2 VIS 1 3/8V5 TSB31E44 CIG 020V027 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251451Z AUTO 31011KT 1 3/4SM BR FEW013 SCT019 BKN024 BKN029 M M RMK AO2 WSHFT 50 VIS 1 3/4V8 TSB31E44 CIG 024V029 BKN024 V SCT SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251444Z AUTO 23009KT 6SM HZ SCT019 BKN024 BKN031 M M RMK AO2 TSB31E44 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251431Z AUTO 22006KT 10SM TS BKN017 BKN022 BKN028 BKN210 M M RMK AO2 TSB31 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 251355Z AUTO 21007KT 10SM BKN016 BKN026 BKN055 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 251255Z AUTO 20004KT 10SM BKN010 BKN060 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251240Z AUTO 18005KT 10SM BKN009 M M RMK AO2 BKN V SCT SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 251155Z AUTO 18004KT 10SM SCT007 BKN080 BKN140 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251110Z AUTO 18004KT 10SM OVC006 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 251055Z AUTO 18003KT 2 3/4SM BR OVC006 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251040Z AUTO 17005KT 2 1/2SM BR OVC005 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 251025Z AUTO 18004KT 2 3/4SM BR BKN005 OVC075 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 250955Z AUTO 16003KT 5SM HZ SCT070 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 250855Z AUTO 16003KT 10SM CLR M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250810Z AUTO 18003KT 10SM FEW039 FEW065 SCT080 SCT100 BKN160 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 250755Z AUTO 19004KT 8SM BKN027 BKN065 BKN080 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250743Z AUTO 19008KT 1 3/8SM BR BKN025 M M RMK AO2 VIS 7/8V2 BKN V OVC SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250737Z AUTO 18008KT 1SM BR FEW009 OVC025 M M RMK AO2 VIS 1V4 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250725Z AUTO 17008KT 4SM HZ FEW010 SCT016 OVC027 M M RMK AO2 CIG 014V027 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250710Z AUTO 20005KT 8SM SCT008 BKN014 OVC020 M M RMK AO2 CIG 010V020 BKN V SCT SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 250555Z AUTO 19003KT 10SM FEW008 SCT022 BKN070 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250540Z AUTO 00000KT 10SM SCT009 BKN022 M M RMK AO2 CIG 009V022 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250525Z AUTO 18004KT 10SM OVC009 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250510Z AUTO 19003KT 10SM OVC010 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 250455Z AUTO 20003KT 10SM OVC009 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250410Z AUTO 00000KT 10SM OVC008 M M RMK AO2 OVC V BKN SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 250355Z AUTO 00000KT 10SM BKN010 BKN210 M M RMK AO2 CIG 010V210 BKN010 V SCT SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250325Z AUTO 18004KT 10SM SCT007 OVC210 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250310Z AUTO 16003KT 10SM OVC007 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 250255Z AUTO 17003KT 10SM OVC006 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250225Z AUTO 00000KT 10SM OVC007 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 250210Z AUTO 00000KT 10SM BKN008 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 250155Z AUTO 00000KT 10SM SCT008 SCT026 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 250055Z AUTO 14004KT 10SM SCT140 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 242355Z AUTO 14005KT 10SM FEW008 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 242255Z AUTO 16003KT 10SM SCT010 SCT095 OVC120 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body '280/10' while processing 'METAR KGJT 251953Z COR 280/10 10SM CLR 28/M01 A2992 RMK AO2 SLP060 T02781006'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body '240/08G18KTS' while processing 'SPECI KCPR 251832Z COR 240/08G18KTS 10SM CLR 25/04 A3002 RMK AO2 T02500039'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 260455Z AUTO 00000KT 10SM SCT024 BKN095 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body '>' while processing 'METAR PAJN 251853Z 25006KT 10SM > FEW085 FEW160 FEW240 15/02 A2967 RMK AO2 SLP046 T01500022 $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'SPECI KGSB 260625Z AUTO 22004KT 10SM OVC007 M M RMK AO2 OVC V BKN SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 260555Z AUTO 00000KT 10SM BKN008 BKN025 BKN095 M M RMK AO2 CIG 008V095 BKN008 V SCT SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'KT' while processing 'METAR KDTW 250953Z 35004 KT 9SM OVC011 14/12 A3012 RMK SLPNO T01400120'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body '2609G18KT' while processing 'METAR KATW 251445Z 2609G18KT 10SM BKN120 23/13 A3008'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M M' while processing 'METAR KGSB 260755Z AUTO 22004KT 10SM OVC007 M M RMK AO2 SLPNO RVRNO TSNO $'
+  warnings.warn(message, RuntimeWarning)
+/opt/anaconda3/lib/python3.12/site-packages/metar/Metar.py:497: RuntimeWarning: Unparsed groups in body 'M' while processing 'METAR KOTH 261554Z 10SM M 12/11 A2991'
+  warnings.warn(message, RuntimeWarning)
