@@ -58,6 +58,7 @@ export default function Leaderboard({ onSelectAirport }) {
 
   return (
     <div>
+      <div>Hello</div>
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
