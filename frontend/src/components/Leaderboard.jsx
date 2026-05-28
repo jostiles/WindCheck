@@ -1,23 +1,27 @@
 /**
  * Leaderboard — sortable table of all airports ranked by accuracy.
  * Clicking a column header re-sorts. Clicking an airport row loads its detail.
+ * Weight sliders in the header row recompute a weighted overall score client-side.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { fetchLeaderboard, fetchStats } from '../api'
 
-const COLUMNS = [
-  { key: 'rank',                   label: '#',          sortable: false },
-  { key: 'icao',                   label: 'Airport',    sortable: false },
-  { key: 'state',                  label: 'State',      sortable: false },
-  { key: 'observation_count',      label: 'Obs',        sortable: false },
-  { key: 'overall_score',          label: 'Overall',    sortable: true  },
-  { key: 'ceiling_coverage_score', label: 'Sky Cover',  sortable: true  },
-  { key: 'ceiling_altitude_score', label: 'Cig Alt',    sortable: true  },
-  { key: 'visibility_score',       label: 'Visibility', sortable: true  },
-  { key: 'wind_speed_score',       label: 'Wind Spd',   sortable: true  },
-  { key: 'wind_dir_score',         label: 'Wind Dir',   sortable: true  },
+const PARAM_COLS = [
+  { key: 'ceiling_coverage_score', label: 'Sky Cover'  },
+  { key: 'ceiling_altitude_score', label: 'Cig Alt'    },
+  { key: 'visibility_score',       label: 'Visibility' },
+  { key: 'wind_speed_score',       label: 'Wind Spd'   },
+  { key: 'wind_dir_score',         label: 'Wind Dir'   },
 ]
+
+const DEFAULT_WEIGHTS = {
+  ceiling_coverage_score: 1,
+  ceiling_altitude_score: 1,
+  visibility_score:       1,
+  wind_speed_score:       1,
+  wind_dir_score:         1,
+}
 
 const US_STATES = [
   'AK','AL','AR','AZ','CA','CO','CT','DC','DE','FL','GA','HI','IA','ID','IL','IN',
@@ -25,6 +29,23 @@ const US_STATES = [
   'NM','NV','NY','OH','OK','OR','PA','PR','RI','SC','SD','TN','TX','UT','VA','VI',
   'VT','WA','WI','WV','WY',
 ]
+
+const SELECT_STYLE = {
+  background: 'var(--surface2)', border: '1px solid var(--border)',
+  color: 'var(--text)', borderRadius: 6, padding: '3px 8px', fontSize: 12,
+}
+
+function weightedScore(row, weights) {
+  const total = Object.values(weights).reduce((a, b) => a + b, 0)
+  if (total === 0) return null
+  let sum = 0, wsum = 0
+  for (const { key } of PARAM_COLS) {
+    const v = row[key]
+    const w = weights[key] ?? 0
+    if (v != null && w > 0) { sum += v * w; wsum += w }
+  }
+  return wsum === 0 ? null : sum / wsum
+}
 
 function ScoreCell({ value }) {
   if (value === null || value === undefined)
@@ -35,13 +56,13 @@ function ScoreCell({ value }) {
 }
 
 export default function Leaderboard({ onSelectAirport }) {
-  const [rows,         setRows]         = useState([])
-  const [sortBy,       setSortBy]       = useState('overall_score')
-  const [minObs,       setMinObs]       = useState(1)
-  const [stateFilter,  setStateFilter]  = useState('')
-  const [loading,      setLoading]      = useState(false)
-  const [error,        setError]        = useState(null)
+  const [rows,          setRows]          = useState([])
+  const [minObs,        setMinObs]        = useState(1)
+  const [stateFilter,   setStateFilter]   = useState('')
+  const [loading,       setLoading]       = useState(false)
+  const [error,         setError]         = useState(null)
   const [trackingSince, setTrackingSince] = useState(null)
+  const [weights,       setWeights]       = useState(DEFAULT_WEIGHTS)
 
   useEffect(() => {
     fetchStats().then(s => {
@@ -55,15 +76,28 @@ export default function Leaderboard({ onSelectAirport }) {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    fetchLeaderboard(sortBy, minObs, stateFilter)
+    fetchLeaderboard('overall_score', minObs, stateFilter)
       .then(setRows)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [sortBy, minObs, stateFilter])
+  }, [minObs, stateFilter])
 
-  function handleSort(col) {
-    if (col.sortable) setSortBy(col.key)
+  // Re-sort client-side whenever rows or weights change
+  const sortedRows = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      const wa = weightedScore(a, weights) ?? -1
+      const wb = weightedScore(b, weights) ?? -1
+      return wb - wa
+    })
+  }, [rows, weights])
+
+  const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0)
+
+  function setWeight(key, val) {
+    setWeights(prev => ({ ...prev, [key]: Math.max(0, Math.min(10, Number(val))) }))
   }
+
+  const allEqual = Object.values(weights).every(w => w === weights[PARAM_COLS[0].key])
 
   return (
     <div>
@@ -80,25 +114,25 @@ export default function Leaderboard({ onSelectAirport }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
             State
-            <select
-              value={stateFilter}
-              onChange={e => setStateFilter(e.target.value)}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '3px 8px', fontSize: 12 }}
-            >
+            <select value={stateFilter} onChange={e => setStateFilter(e.target.value)} style={SELECT_STYLE}>
               <option value=''>All</option>
               {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
             Min observations
-            <select
-              value={minObs}
-              onChange={e => setMinObs(Number(e.target.value))}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '3px 8px', fontSize: 12 }}
-            >
+            <select value={minObs} onChange={e => setMinObs(Number(e.target.value))} style={SELECT_STYLE}>
               {[1, 3, 5, 10, 20].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
+          {!allEqual && (
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setWeights(DEFAULT_WEIGHTS)}
+            >
+              Reset weights
+            </button>
+          )}
         </div>
       </div>
 
@@ -115,50 +149,72 @@ export default function Leaderboard({ onSelectAirport }) {
               </div>
             : <table>
                 <thead>
+                  {/* Column headers */}
                   <tr>
-                    {COLUMNS.map(col => (
-                      <th
-                        key={col.key}
-                        className={[col.sortable ? 'sortable' : '', sortBy === col.key ? 'sorted' : ''].join(' ')}
-                        onClick={() => handleSort(col)}
-                      >
-                        {col.label}
-                        {col.sortable && (
-                          <span className="sort-arrow">
-                            {sortBy === col.key ? ' ▼' : ' ·'}
-                          </span>
-                        )}
-                      </th>
+                    <th>#</th>
+                    <th>Airport</th>
+                    <th>State</th>
+                    <th>Obs</th>
+                    <th>Overall</th>
+                    {PARAM_COLS.map(col => (
+                      <th key={col.key}>{col.label}</th>
                     ))}
+                  </tr>
+                  {/* Weight sliders */}
+                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                    <th colSpan={4} style={{ padding: '6px 14px', fontWeight: 400, fontSize: 11, color: 'var(--muted)', textAlign: 'left', textTransform: 'none', letterSpacing: 0 }}>
+                      Weights
+                    </th>
+                    <th style={{ padding: '6px 14px' }} />
+                    {PARAM_COLS.map(col => {
+                      const w = weights[col.key]
+                      const pct = totalWeight > 0 ? Math.round((w / totalWeight) * 100) : 0
+                      return (
+                        <th key={col.key} style={{ padding: '4px 14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+                            <input
+                              type="range"
+                              min={0} max={10} step={1}
+                              value={w}
+                              onChange={e => setWeight(col.key, e.target.value)}
+                              style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                            />
+                            <span style={{ fontSize: 10, color: w === 0 ? 'var(--gray)' : 'var(--muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+                              {w === 0 ? 'off' : `${pct}%`}
+                            </span>
+                          </div>
+                        </th>
+                      )
+                    })}
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r, i) => (
-                    <tr key={r.icao}>
-                      <td className="rank-cell">{i + 1}</td>
-                      <td>
-                        <div
-                          className="airport-link"
-                          onClick={() => onSelectAirport(r.icao)}
-                        >
-                          {r.icao}
-                        </div>
-                        {r.name && (
-                          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
-                            {r.name.trim()}
+                  {sortedRows.map((r, i) => {
+                    const ws = weightedScore(r, weights)
+                    return (
+                      <tr key={r.icao}>
+                        <td className="rank-cell">{i + 1}</td>
+                        <td>
+                          <div className="airport-link" onClick={() => onSelectAirport(r.icao)}>
+                            {r.icao}
                           </div>
-                        )}
-                      </td>
-                      <td style={{ color: 'var(--muted)' }}>{r.state ?? '—'}</td>
-                      <td style={{ color: 'var(--muted)' }}>{r.observation_count}</td>
-                      <td><ScoreCell value={r.overall_score} /></td>
-                      <td><ScoreCell value={r.ceiling_coverage_score} /></td>
-                      <td><ScoreCell value={r.ceiling_altitude_score} /></td>
-                      <td><ScoreCell value={r.visibility_score} /></td>
-                      <td><ScoreCell value={r.wind_speed_score} /></td>
-                      <td><ScoreCell value={r.wind_dir_score} /></td>
-                    </tr>
-                  ))}
+                          {r.name && (
+                            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
+                              {r.name.trim()}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ color: 'var(--muted)' }}>{r.state ?? '—'}</td>
+                        <td style={{ color: 'var(--muted)' }}>{r.observation_count}</td>
+                        <td><ScoreCell value={ws} /></td>
+                        <td><ScoreCell value={r.ceiling_coverage_score} /></td>
+                        <td><ScoreCell value={r.ceiling_altitude_score} /></td>
+                        <td><ScoreCell value={r.visibility_score} /></td>
+                        <td><ScoreCell value={r.wind_speed_score} /></td>
+                        <td><ScoreCell value={r.wind_dir_score} /></td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
         }
