@@ -176,7 +176,7 @@ export default function App() {
     <>
       {/* ── NOTAM banner ── */}
       <div style={{ background: '#78350f', borderBottom: '1px solid #92400e', color: '#fde68a', fontSize: 12, fontWeight: 600, textAlign: 'center', padding: '6px 24px', letterSpacing: '0.3px' }}>
-        Website NOTAM: Currently in testing mode and data about station accuracy isn't the best yet.
+        Website NOTAM: Currently in testing mode and data about station accuracy ain't the best yet. This will improve with time.
       </div>
 
       {/* ── Header ── */}
