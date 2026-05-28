@@ -61,6 +61,7 @@ export default function Leaderboard({ onSelectAirport }) {
   const [stateFilter,   setStateFilter]   = useState('')
   const [militaryOnly,  setMilitaryOnly]  = useState(false)
   const [sortAsc,       setSortAsc]       = useState(false)
+  const [sortKey,       setSortKey]       = useState('overall')
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState(null)
   const [trackingSince, setTrackingSince] = useState(null)
@@ -84,14 +85,24 @@ export default function Leaderboard({ onSelectAirport }) {
       .finally(() => setLoading(false))
   }, [minObs, stateFilter, militaryOnly])
 
-  // Re-sort client-side whenever rows or weights change
+  function handleColSort(key) {
+    if (sortKey === key) {
+      setSortAsc(a => !a)
+    } else {
+      setSortKey(key)
+      setSortAsc(false)
+    }
+  }
+
+  // Re-sort client-side whenever rows, weights, sortKey, or sortAsc change
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
-      const wa = weightedScore(a, weights) ?? -1
-      const wb = weightedScore(b, weights) ?? -1
-      return sortAsc ? wa - wb : wb - wa
+      const val = r => sortKey === 'overall'
+        ? (weightedScore(r, weights) ?? -1)
+        : (r[sortKey] ?? -1)
+      return sortAsc ? val(a) - val(b) : val(b) - val(a)
     })
-  }, [rows, weights, sortAsc])
+  }, [rows, weights, sortAsc, sortKey])
 
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0)
 
@@ -166,11 +177,18 @@ export default function Leaderboard({ onSelectAirport }) {
                     <th>Airport</th>
                     <th>State</th>
                     <th>Obs</th>
-                    <th style={{ cursor: 'pointer', userSelect: 'none', color: 'var(--accent2)' }} onClick={() => setSortAsc(a => !a)}>
-                      Overall <span style={{ fontSize: 10 }}>{sortAsc ? '▲' : '▼'}</span>
-                    </th>
-                    {PARAM_COLS.map(col => (
-                      <th key={col.key}>{col.label}</th>
+                    {[{ key: 'overall', label: 'Overall' }, ...PARAM_COLS].map(col => (
+                      <th
+                        key={col.key}
+                        className="sortable"
+                        style={{ cursor: 'pointer', userSelect: 'none', color: sortKey === col.key ? 'var(--accent2)' : '' }}
+                        onClick={() => handleColSort(col.key)}
+                      >
+                        {col.label}
+                        <span className="sort-arrow" style={{ fontSize: 10 }}>
+                          {sortKey === col.key ? (sortAsc ? ' ▲' : ' ▼') : ' ·'}
+                        </span>
+                      </th>
                     ))}
                   </tr>
                   {/* Weight sliders */}
