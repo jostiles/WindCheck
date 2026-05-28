@@ -364,7 +364,7 @@ def score_wind_speed(
     """
     Score wind speed accuracy.
 
-    Returns 1.0 if within ±10 kt, 0.0 otherwise, None if missing.
+    Returns 1.0 if within ±5 kt, 0.0 otherwise, None if missing.
     Calm winds (0 kt) are a valid forecast and observation.
     """
     if forecast_speed is None or observed_speed is None:

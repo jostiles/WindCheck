@@ -21,9 +21,9 @@ export default function About() {
       <Section title="Flight Categories">
         <p style={{ color: 'var(--muted)', marginBottom: 16, lineHeight: 1.7 }}>
           The FAA defines four flight categories based on ceiling (lowest broken
-          or overcast cloud layer) and visibility. Wind Check scores ceiling
-          accuracy as a category match — a forecast that nails the exact
-          altitude but misses the category counts as wrong.
+          or overcast cloud layer) and visibility. These categories provide useful
+          context for understanding why ceiling accuracy matters — a one-category
+          miss can be the difference between a VFR departure and a filed IFR flight plan.
         </p>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
@@ -81,8 +81,8 @@ export default function About() {
           <ScoreRow
             color="#a78bfa"
             label="Weather Phenomena"
-            score="Precision + Recall"
-            description="Tracks significant weather codes: TS, RA, SN, DZ, FG, GR, and others. Precision = what fraction of forecast phenomena actually occurred. Recall = what fraction of observed phenomena were forecast. Both are averaged into an F1-style score for the overall."
+            score="F1 score"
+            description="Tracks significant weather codes: TS, RA, SN, DZ, FG, GR, and others. Precision = what fraction of forecast phenomena actually occurred. Recall = what fraction of observed phenomena were forecast. The two are combined into an F1 score (harmonic mean of precision and recall) for the overall."
           />
         </div>
       </Section>
@@ -120,7 +120,7 @@ export default function About() {
           <a href="https://aviationweather.gov/api/data/" target="_blank" rel="noreferrer" style={{ color: 'var(--accent2)' }}>
             Aviation Weather Center ADDS API
           </a>{' '}
-          (no key required). The pipeline runs hourly, storing results in a local
+          (no key required). The pipeline runs hourly on a cloud server, storing results in a
           SQLite database. Each airport accumulates ~24 scored observations per day.
         </p>
       </Section>
