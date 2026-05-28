@@ -541,7 +541,7 @@ def leaderboard(
                           description="Column to sort by: overall_score | ceiling_score | "
                                       "visibility_score | wind_speed_score | wind_dir_score"),
     min_obs:  int = Query(5, ge=1, description="Minimum observations required for inclusion"),
-    limit:    int = Query(500, ge=1, le=1000),
+    limit:    int = Query(1000, ge=1, le=1000),
     state:    Optional[str] = Query(None, description="Filter by US state abbreviation, e.g. IL"),
 ):
     """
