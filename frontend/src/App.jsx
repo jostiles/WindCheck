@@ -201,10 +201,10 @@ export default function App() {
             <g clipPath="url(#circle-clip)">
               <rect x="0"  y="0"  width="18" height="18" fill="#22c55e" /> {/* VFR — green */}
               <rect x="18" y="0"  width="18" height="18" fill="#3b82f6" /> {/* MVFR — blue */}
-              <rect x="0"  y="18" width="18" height="18" fill="#ef4444" /> {/* IFR — red */}
-              <rect x="18" y="18" width="18" height="18" fill="#a855f7" /> {/* LIFR — purple */}
+              <rect x="0"  y="18" width="18" height="18" fill="#a855f7" /> {/* IFR — purple */}
+              <rect x="18" y="18" width="18" height="18" fill="#ef4444" /> {/* LIFR — red */}
             </g>
-            <circle cx="18" cy="18" r="17" fill="none" stroke="var(--border)" strokeWidth="1" />
+            <circle cx="18" cy="18" r="17" fill="none" stroke="#000000" strokeWidth="1.5" />
           </svg>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div className="app-logo">Wind<span>Check</span></div>
