@@ -124,10 +124,19 @@ US_TAF_STATIONS: list[str] = [
     "PAIL", "PAJN", "PAKN", "PAKT", "PAKW", "PAMC", "PANC", "PAOM", "PAOR", "PAOT",
     "PAPG", "PAQT", "PASC", "PASD", "PASI", "PASN", "PASY", "PATA", "PATK", "PAUN",
     "PAVD", "PAWG", "PAYA",
-    # ── Hawaii ──
+    # ── Hawaii (civilian) ──
     "PHJH", "PHJR", "PHKO", "PHLI", "PHMK", "PHNL", "PHNY", "PHOG", "PHTO",
+    # ── Hawaii (military) ──
+    "PHHI", "PHNG",
     # ── Puerto Rico / US Virgin Islands ──
     "TIST", "TISX", "TJBQ", "TJPS", "TJSJ",
+    # ── Military / joint-use (CONUS) ──
+    "KBAB", "KBAD", "KBIF", "KBKF", "KDMA", "KDOV", "KEND", "KFAF", "KFBG", "KFCS",
+    "KFFO", "KFHU", "KFRI", "KFTK", "KGRK", "KGUS", "KHIF", "KHOP", "KHRT", "KHST",
+    "KLFI", "KLRF", "KLTS", "KMCF", "KMGE", "KMIB", "KMUO", "KNBC", "KNFL", "KNFW",
+    "KNGU", "KNHK", "KNKX", "KNLC", "KNMM", "KNPA", "KNQI", "KNRB", "KNSE", "KNTU",
+    "KNUC", "KNUW", "KNXP", "KOFF", "KPAM", "KPOE", "KRCA", "KRDR", "KRND", "KSEM",
+    "KSKA", "KSKF", "KSUU", "KTBN", "KTIK", "KVAD", "KVBG", "KVPS", "KWRB", "KWRI",
 ]
 
 
