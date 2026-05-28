@@ -6,6 +6,7 @@ import AccuracyChart       from './components/AccuracyChart'
 import RecentTable         from './components/RecentTable'
 import Leaderboard         from './components/Leaderboard'
 import About               from './components/About'
+import Welcome             from './components/Welcome'
 import SnapshotComparison  from './components/SnapshotComparison'
 import MapView             from './components/MapView'
 
@@ -255,9 +256,15 @@ export default function App() {
           </button>
         ))}
         <button
+          className={`tab ${tab === 'welcome' ? 'active' : ''}`}
+          onClick={() => setTab('welcome')}
+          style={{ marginLeft: 'auto' }}
+        >
+          What site did Jordan just send me?
+        </button>
+        <button
           className={`tab ${tab === 'about' ? 'active' : ''}`}
           onClick={() => setTab('about')}
-          style={{ marginLeft: 'auto' }}
         >
           How it's graded
         </button>
@@ -265,7 +272,9 @@ export default function App() {
 
       {/* ── Content ── */}
       <main className="main-content">
-        {tab === 'about'
+        {tab === 'welcome'
+          ? <Welcome />
+          : tab === 'about'
           ? <About />
           : tab === 'map'
             ? <MapView onSelectAirport={selectFromMap} />
