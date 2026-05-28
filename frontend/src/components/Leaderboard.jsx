@@ -125,14 +125,6 @@ export default function Leaderboard({ onSelectAirport }) {
               {[1, 3, 5, 10, 20].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
-          {!allEqual && (
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => setWeights(DEFAULT_WEIGHTS)}
-            >
-              Reset weights
-            </button>
-          )}
         </div>
       </div>
 
@@ -163,7 +155,18 @@ export default function Leaderboard({ onSelectAirport }) {
                   {/* Weight sliders */}
                   <tr style={{ borderBottom: '2px solid var(--border)' }}>
                     <th colSpan={4} style={{ padding: '6px 14px', fontWeight: 400, fontSize: 11, color: 'var(--muted)', textAlign: 'left', textTransform: 'none', letterSpacing: 0 }}>
-                      Weights
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        Weights
+                        {!allEqual && (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setWeights(DEFAULT_WEIGHTS)}
+                            style={{ fontSize: 10, padding: '2px 7px' }}
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </span>
                     </th>
                     <th style={{ padding: '6px 14px' }} />
                     {PARAM_COLS.map(col => {
