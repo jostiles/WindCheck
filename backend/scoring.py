@@ -49,12 +49,13 @@ to the most likely conditions rather than hedging everything to TEMPO.
 
 Scoring functions
 -----------------
-  score_ceiling        Flight-category comparison (VFR/MVFR/IFR/LIFR).
-  score_visibility     Binary: observed within ±1 SM of forecast.
-  score_wind_speed     Binary: within ±10 kt.
-  score_wind_direction Binary: within ±30° (circular).
-  score_weather        Precision + recall over tracked-phenomenon token sets.
-  overall_score        Unweighted mean of all non-None component scores.
+  score_ceiling_coverage  Ordered scale (SKC→OVC, rank 0→4); score = 1 − |diff| / 4.
+  score_ceiling_altitude  FAA flight-category tier match; score = max(0, 1 − |tier_diff| / 3).
+  score_visibility        FAA flight-category tier match; same formula as ceiling altitude.
+  score_wind_speed        Percentage error on peak wind (speed or gust); score = max(0, 1 − |err|).
+  score_wind_direction    Continuous decay; score = max(0, 1 − diff / 90°).
+  score_weather           Severity-weighted F1: each phenomenon weighted by hazard tier.
+  overall_score           Unweighted mean of all non-None component scores.
 """
 
 from __future__ import annotations
@@ -67,6 +68,31 @@ from typing import Optional
 from fetch import TRACKED_PHENOMENA
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Sky coverage ordering and weather phenomenon severity weights
+# ---------------------------------------------------------------------------
+
+# Ordered from clear to overcast (0 = clear, 4 = fully obscured)
+COVERAGE_ORDER: dict[str, int] = {
+    'SKC': 0, 'CLR': 0,
+    'FEW': 1,
+    'SCT': 2,
+    'BKN': 3,
+    'OVC': 4, 'VV': 4,
+}
+
+# Severity weights for significant weather phenomena.
+# Higher weight = greater operational impact = missing it hurts more.
+PHENOMENON_WEIGHTS: dict[str, float] = {
+    'TS':   5.0, 'TSRA': 5.0, 'TSSN': 5.0, 'TSGR': 5.0, 'TSGS': 5.0, 'TSPL': 5.0,
+    'FZRA': 4.0, 'FZDZ': 4.0, 'FZSN': 4.0,
+    'BLSN': 3.0, 'DRSN': 3.0,
+    'SN':   2.0, 'PL':   2.0, 'RA':   2.0, 'FG':   2.0,
+    'DZ':   1.0, 'GR':   1.0, 'GS':   1.0,
+    'BR':   0.5, 'HZ':   0.5, 'FU':   0.5, 'SA':   0.5, 'DU':   0.5,
+}
+_DEFAULT_PHENOMENON_WEIGHT = 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -301,36 +327,106 @@ def _merge(base: Conditions, override: dict) -> None:
 # Individual parameter scoring functions
 # ---------------------------------------------------------------------------
 
+def _ceiling_category(ceiling_ft: Optional[int]) -> int:
+    """
+    Map a ceiling altitude to an FAA flight-category tier.
+
+    Tier  Category  Ceiling
+    ----  --------  -------
+      3   VFR       ≥ 3,000 ft AGL  (also used when no ceiling is reported)
+      2   MVFR      1,000 – 2,999 ft
+      1   IFR         500 –   999 ft
+      0   LIFR            < 500 ft
+    """
+    if ceiling_ft is None:
+        return 3  # no ceiling → VFR
+    if ceiling_ft < 500:
+        return 0  # LIFR
+    if ceiling_ft < 1000:
+        return 1  # IFR
+    if ceiling_ft < 3000:
+        return 2  # MVFR
+    return 3  # VFR
+
+
+def _visibility_category(vis_sm: Optional[float]) -> int:
+    """
+    Map a visibility value (statute miles) to an FAA flight-category tier.
+
+    Tier  Category  Visibility
+    ----  --------  ----------
+      3   VFR       ≥ 5 SM  (also used when visibility is unknown)
+      2   MVFR      3 – 4.99 SM
+      1   IFR       1 – 2.99 SM
+      0   LIFR          < 1 SM
+    """
+    if vis_sm is None:
+        return 3  # unknown → assume VFR
+    if vis_sm < 1.0:
+        return 0  # LIFR
+    if vis_sm < 3.0:
+        return 1  # IFR
+    if vis_sm < 5.0:
+        return 2  # MVFR
+    return 3  # VFR
+
+
 def score_ceiling_coverage(
     forecast_coverage: Optional[str],
     observed_coverage: Optional[str],
 ) -> float:
     """
-    Score sky coverage type accuracy.
+    Score sky coverage using an ordered categorical scale.
 
-    Compares the coverage type of the lowest ceiling layer (BKN, OVC, VV)
-    between forecast and observed.  "No ceiling" (None) is treated as a
-    distinct category that matches only another "no ceiling".
+    Coverage types are ranked from clear to fully obscured:
+      SKC / CLR = 0  (clear)
+      FEW        = 1
+      SCT        = 2
+      BKN        = 3
+      OVC / VV   = 4  (overcast / vertical visibility)
 
-    Returns 1.0 when both agree (including both being clear), 0.0 otherwise.
+    Unknown or absent coverage is treated as clear (rank 0).
+
+    Score formula:  1 − |forecast_rank − observed_rank| / 4
+
+    Examples:
+      BKN vs BKN  → |3 − 3| / 4 = 1.00
+      BKN vs OVC  → |3 − 4| / 4 = 0.75
+      SCT vs OVC  → |2 − 4| / 4 = 0.50
+      FEW vs OVC  → |1 − 4| / 4 = 0.25
+      SKC vs OVC  → |0 − 4| / 4 = 0.00
     """
-    return 1.0 if forecast_coverage == observed_coverage else 0.0
+    fc = COVERAGE_ORDER.get(forecast_coverage or '', 0)
+    ob = COVERAGE_ORDER.get(observed_coverage or '', 0)
+    return 1.0 - abs(fc - ob) / 4.0
 
 
 def score_ceiling_altitude(
     forecast_ceiling: Optional[int],
     observed_ceiling: Optional[int],
-) -> Optional[float]:
+) -> float:
     """
-    Score ceiling altitude accuracy.
+    Score ceiling altitude by FAA flight-category tier preservation.
 
-    Returns 1.0 if the forecast ceiling altitude is within ±500 ft of the
-    observed ceiling altitude.  Returns 0.0 if the difference exceeds 500 ft.
-    Returns None when either side reports no ceiling (no altitude to compare).
+    Both the forecast and observed ceiling are mapped to a flight-category
+    tier (0 = LIFR, 1 = IFR, 2 = MVFR, 3 = VFR).  A reported ceiling of
+    None means no ceiling layer — treated as VFR (tier 3).
+
+    Score formula:  max(0, 1 − |forecast_tier − observed_tier| / 3)
+
+    Tier distances and scores:
+      Same tier      → 1.00  (e.g. both IFR)
+      1 tier apart   → 0.67  (e.g. IFR vs MVFR)
+      2 tiers apart  → 0.33  (e.g. LIFR vs MVFR)
+      3 tiers apart  → 0.00  (e.g. LIFR vs VFR)
+
+    Rationale: a 900 ft ceiling vs a 1,100 ft ceiling is an operationally
+    trivial difference (both IFR); a 900 ft ceiling vs "no ceiling" is not.
+    The tier system captures operational impact rather than raw altitude error.
     """
-    if forecast_ceiling is None or observed_ceiling is None:
-        return None
-    return 1.0 if abs(forecast_ceiling - observed_ceiling) <= 500 else 0.0
+    fc_cat = _ceiling_category(forecast_ceiling)
+    ob_cat = _ceiling_category(observed_ceiling)
+    return max(0.0, 1.0 - abs(fc_cat - ob_cat) / 3.0)
 
 
 def score_visibility(
@@ -339,37 +435,65 @@ def score_visibility(
     forecast_gt: bool = False,
 ) -> Optional[float]:
     """
-    Score visibility accuracy.
+    Score visibility by FAA flight-category tier preservation.
 
-    When ``forecast_gt`` is True (P6SM — "greater than" prefix), the TAF is
-    predicting visibility *at least* ``forecast_vis`` SM.  Any observed value
-    >= forecast_vis is a correct prediction; anything below is a miss.
+    Both sides are mapped to a flight-category tier (0 = LIFR, 1 = IFR,
+    2 = MVFR, 3 = VFR).
 
-    When ``forecast_gt`` is False, full credit requires the observed value to
-    be within ±1 SM of the forecast.
+    P6SM handling: when ``forecast_gt`` is True the TAF is predicting
+    *at least* ``forecast_vis`` SM (a lower bound).  Since that lower bound
+    is ≥ 6 SM, the forecast tier is always VFR (tier 3).
 
-    Returns None if either value is missing.
+    Returns None when the observed visibility is unavailable (no observation
+    to compare against).  An unknown forecast visibility is treated as VFR.
+
+    Score formula:  max(0, 1 − |forecast_tier − observed_tier| / 3)
+
+    Tier distances and scores are the same as ceiling altitude scoring.
     """
-    if forecast_vis is None or observed_vis is None:
+    if observed_vis is None:
         return None
-    if forecast_gt:
-        return 1.0 if observed_vis >= forecast_vis else 0.0
-    return 1.0 if abs(forecast_vis - observed_vis) <= 1.0 else 0.0
+    fc_cat = 3 if (forecast_gt or forecast_vis is None) else _visibility_category(forecast_vis)
+    ob_cat = _visibility_category(observed_vis)
+    return max(0.0, 1.0 - abs(fc_cat - ob_cat) / 3.0)
 
 
 def score_wind_speed(
     forecast_speed: Optional[int],
     observed_speed: Optional[int],
+    forecast_gust: Optional[int] = None,
+    observed_gust: Optional[int] = None,
 ) -> Optional[float]:
     """
-    Score wind speed accuracy.
+    Score wind speed accuracy using percentage-based error on peak wind.
 
-    Returns 1.0 if within ±5 kt, 0.0 otherwise, None if missing.
-    Calm winds (0 kt) are a valid forecast and observation.
+    Peak wind magnitude for each side is defined as:
+      peak = max(speed, gust)  when a gust is reported
+      peak = speed             otherwise
+
+    This means a TAF that calls for gusts to 35 kt is held to 35 kt, and
+    a METAR reporting gusts to 40 kt is compared against that 35 kt peak.
+    The gust — not the sustained speed — is the operationally relevant
+    magnitude when one is present.
+
+    Score formula:
+      error = |forecast_peak − observed_peak| / max(forecast_peak, observed_peak, 1)
+      score = max(0, 1 − error)
+
+    A percentage-based denominator means a 10 kt error on a 10 kt wind
+    (100% error, score ≈ 0.0) is penalised far more than a 10 kt error on
+    a 50 kt wind (20% error, score ≈ 0.80).  The floor of 1 in the
+    denominator prevents division by zero on calm-wind observations.
+
+    Returns None if either speed is unavailable.
     """
     if forecast_speed is None or observed_speed is None:
         return None
-    return 1.0 if abs(forecast_speed - observed_speed) <= 5 else 0.0
+    fc_peak = max(forecast_speed, forecast_gust or 0)
+    ob_peak = max(observed_speed, observed_gust or 0)
+    denom = max(fc_peak, ob_peak, 1)
+    error = abs(fc_peak - ob_peak) / denom
+    return max(0.0, 1.0 - error)
 
 
 def score_wind_direction(
@@ -379,33 +503,35 @@ def score_wind_direction(
     observed_variable: bool = False,
 ) -> Optional[float]:
     """
-    Score wind direction accuracy using circular arithmetic.
+    Score wind direction accuracy using continuous angular decay.
 
-    Returns 1.0 if the angular difference is ≤ 30°, 0.0 otherwise.
-    None if either value is missing (and neither is variable-wind).
+    The score decays linearly from 1.0 at 0° error to 0.0 at 90° error,
+    then stays at 0.0 for any larger disagreement:
+
+      score = max(0, 1 − diff / 90)
+
+    Circular arithmetic is used so that 350° vs 010° = 20°, not 340°.
+
+    The 90° zero-point reflects that a right-angle wind error (e.g. a
+    southwest wind forecast against a northwest observed wind) represents a
+    fundamentally wrong forecast — a pilot planning crosswind corrections
+    would be pointing the wrong way entirely.
 
     Variable wind (VRB) handling:
-      - If *both* are variable, score = 1.0 (agreement).
-      - If the *observed* is variable (< 3 kt by convention), and the
-        forecast is also calm/VRB, score = 1.0.
-      - If one is variable and the other is a specific direction, we cannot
-        meaningfully compare; return None.
-
-    The shortest angular path between two compass bearings is used:
-      diff = |a - b|; if diff > 180 take 360 - diff.
+      - Both VRB → 1.0 (agreement).
+      - One VRB, one directional → None (not comparable).
+      - Either value missing → None.
     """
     if forecast_variable and observed_variable:
         return 1.0
     if forecast_variable or observed_variable:
-        # One is VRB, other is directional — not comparable
         return None
     if forecast_dir is None or observed_dir is None:
         return None
-
     diff = abs(forecast_dir - observed_dir) % 360
     if diff > 180:
         diff = 360 - diff
-    return 1.0 if diff <= 30 else 0.0
+    return max(0.0, 1.0 - diff / 90.0)
 
 
 def _normalize_phenomena(weather_list: list[str]) -> set[str]:
@@ -451,48 +577,56 @@ def score_weather_phenomena(
     observed_wx: list[str],
 ) -> tuple[Optional[float], Optional[float]]:
     """
-    Score weather-phenomenon accuracy as precision and recall.
+    Score weather-phenomenon accuracy as severity-weighted precision and recall.
 
-    Precision = TP / (TP + FP)  — "of what we forecast, how much occurred?"
-    Recall    = TP / (TP + FN)  — "of what occurred, how much did we forecast?"
+    Each tracked phenomenon is assigned a severity weight that reflects its
+    operational hazard (see PHENOMENON_WEIGHTS).  Phenomena not in the table
+    receive a default weight of 1.0.
 
-    Both values are in [0, 1].  Returns (None, None) when neither forecast
-    nor observation has any significant weather (neither numerator nor
-    denominator is defined).
+    Weighted precision = Σ weight(TP) / (Σ weight(TP) + Σ weight(FP))
+    Weighted recall    = Σ weight(TP) / (Σ weight(TP) + Σ weight(FN))
 
-    When one side has weather and the other has none:
-      - Forecast has weather, none observed → precision = 0 (over-forecast),
-        recall = None (nothing to recall).
-      - None forecast, weather observed → precision = None, recall = 0 (miss).
+    where TP = correctly forecast phenomena, FP = forecast but not observed,
+    FN = observed but not forecast.
 
-    Parameters
-    ----------
-    forecast_wx   Raw phenomenon token list from the TAF period.
-    observed_wx   Raw phenomenon token list from the METAR.
+    This means missing a thunderstorm (weight 5) hurts 10× more than missing
+    light mist (weight 0.5) in both precision and recall calculations.
+
+    Returns (None, None) when neither forecast nor observation has any
+    significant weather.  When one side is empty:
+      - Forecast only → recall = None, precision penalised for false alarm.
+      - Observed only → precision = None, recall penalised for miss.
+
+    The overall wx_component in score_metar_vs_taf combines these into an
+    F1 score (harmonic mean) when both are available.
     """
     fc_set = _normalize_phenomena(forecast_wx or [])
     ob_set = _normalize_phenomena(observed_wx or [])
 
-    tp = len(fc_set & ob_set)
-    fp = len(fc_set - ob_set)
-    fn = len(ob_set - fc_set)
-
     if not fc_set and not ob_set:
-        # No significant weather on either side — not scored
         return None, None
+
+    def _w(p: str) -> float:
+        return PHENOMENON_WEIGHTS.get(p, _DEFAULT_PHENOMENON_WEIGHT)
+
+    tp_weight = sum(_w(p) for p in fc_set & ob_set)
+    fp_weight = sum(_w(p) for p in fc_set - ob_set)
+    fn_weight = sum(_w(p) for p in ob_set - fc_set)
 
     precision: Optional[float]
     recall:    Optional[float]
 
     if fc_set:
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        denom = tp_weight + fp_weight
+        precision = tp_weight / denom if denom > 0 else 0.0
     else:
-        precision = None  # nothing was forecast, so precision undefined
+        precision = None
 
     if ob_set:
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        denom = tp_weight + fn_weight
+        recall = tp_weight / denom if denom > 0 else 0.0
     else:
-        recall = None  # nothing was observed, so recall undefined
+        recall = None
 
     return precision, recall
 
@@ -561,6 +695,7 @@ def score_metar_vs_taf(
     fc_vis   = base_cond.get("visibility_sm")
     fc_vis_gt = bool(base_cond.get("visibility_gt", False))
     fc_wspd  = base_cond.get("wind_speed")
+    fc_gust  = base_cond.get("wind_gust")
     fc_wdir  = base_cond.get("wind_dir")
     fc_wvar  = base_cond.get("wind_variable", False)
     fc_wx    = base_cond.get("weather_phenomena") or []
@@ -569,6 +704,7 @@ def score_metar_vs_taf(
     ob_ceil_ft  = metar.get("ceiling_ft")
     ob_vis   = metar.get("visibility_sm")
     ob_wspd  = metar.get("wind_speed")
+    ob_gust  = metar.get("wind_gust")
     ob_wdir  = metar.get("wind_dir")
     ob_wvar  = bool(metar.get("wind_variable", False))
     ob_wx    = metar.get("weather_phenomena") or []
@@ -576,7 +712,7 @@ def score_metar_vs_taf(
     ceil_cov_score = score_ceiling_coverage(fc_ceil_cov, ob_ceil_cov)
     ceil_alt_score = score_ceiling_altitude(fc_ceil_ft, ob_ceil_ft)
     vis_score  = score_visibility(fc_vis, ob_vis, fc_vis_gt)
-    spd_score  = score_wind_speed(fc_wspd, ob_wspd)
+    spd_score  = score_wind_speed(fc_wspd, ob_wspd, fc_gust, ob_gust)
     dir_score  = score_wind_direction(fc_wdir, ob_wdir, fc_wvar, ob_wvar)
     wx_prec, wx_rec = score_weather_phenomena(fc_wx, ob_wx)
 

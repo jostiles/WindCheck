@@ -21,9 +21,10 @@ export default function About() {
       <Section title="Flight Categories">
         <p style={{ color: 'var(--muted)', marginBottom: 16, lineHeight: 1.7 }}>
           The FAA defines four flight categories based on ceiling (lowest broken
-          or overcast cloud layer) and visibility. These categories provide useful
-          context for understanding why ceiling accuracy matters — a one-category
-          miss can be the difference between a VFR departure and a filed IFR flight plan.
+          or overcast cloud layer) and visibility. These categories are used directly
+          in the ceiling altitude and visibility scoring — a forecast that lands in the
+          same category as the observation is treated as operationally correct even if
+          the raw numbers differ slightly.
         </p>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
@@ -47,57 +48,197 @@ export default function About() {
 
       {/* ── Scoring Parameters ── */}
       <Section title="How Each Parameter Is Scored">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <ScoreRow
-            color="#0ea5e9"
-            label="Sky Coverage"
-            score="0 or 1"
-            description="Compares the coverage type of the lowest ceiling layer (BKN, OVC, VV) between forecast and observed. Full credit if both agree on the coverage type — including both reporting no ceiling (clear). No credit if one side has a ceiling layer and the other doesn't, or if the types differ (e.g. BKN vs OVC)."
-          />
-          <ScoreRow
-            color="#38bdf8"
-            label="Ceiling Altitude"
-            score="0 or 1"
-            description="Compares the altitude of the lowest ceiling layer in feet AGL. Full credit if the forecast ceiling height is within ±500 ft of the observed ceiling. No credit if the difference exceeds 500 ft. Excluded (null) when either the forecast or the observation reports no ceiling."
-          />
-          <ScoreRow
-            color="#f59e0b"
-            label="Visibility"
-            score="0 or 1"
-            description="Full credit if the forecast visibility is within ±1 statute mile of the observed visibility. P6SM ('greater than 6 SM') forecasts are scored one-sided: any observed value ≥ 6 SM counts as a hit, since the forecast is a lower bound, not an exact value."
-          />
-          <ScoreRow
-            color="#10b981"
-            label="Wind Speed"
-            score="0 or 1"
-            description="Full credit if the forecast wind speed is within ±5 knots of the observed speed. Calm wind (0 kt) is a valid value on both sides."
-          />
-          <ScoreRow
-            color="#f43f5e"
-            label="Wind Direction"
-            score="0 or 1"
-            description="Full credit if the angular difference between forecast and observed direction is ≤ 30°, using circular arithmetic (so 350° vs 010° = 20°, not 340°). Variable winds (VRB) on either side are excluded from scoring."
-          />
-          <ScoreRow
-            color="#a78bfa"
-            label="Weather Phenomena"
-            score="F1 score"
-            description="Tracks significant weather codes: TS, RA, SN, DZ, FG, GR, and others. Precision = what fraction of forecast phenomena actually occurred. Recall = what fraction of observed phenomena were forecast. The two are combined into an F1 score (harmonic mean of precision and recall) for the overall."
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          <ScoreRow color="#0ea5e9" label="Sky Coverage" score="0.0 – 1.0">
+            <p style={{ color: 'var(--muted)', lineHeight: 1.6, fontSize: 13, marginBottom: 8 }}>
+              Coverage types are assigned a rank on an ordered scale from clear to fully obscured.
+              The score is a linear function of the rank difference — adjacent types receive partial
+              credit rather than a binary hit or miss.
+            </p>
+            <table style={{ fontSize: 12, borderCollapse: 'collapse', marginBottom: 8, width: '100%' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['Coverage', 'Rank', '', 'Coverage', 'Rank'].map((h, i) => (
+                    <th key={i} style={{ textAlign: 'left', padding: '4px 10px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: 10 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td style={tdS}>SKC / CLR</td><td style={tdS}>0</td><td style={tdS} /><td style={tdS}>BKN</td><td style={tdS}>3</td></tr>
+                <tr><td style={tdS}>FEW</td><td style={tdS}>1</td><td style={tdS} /><td style={tdS}>OVC / VV</td><td style={tdS}>4</td></tr>
+                <tr><td style={tdS}>SCT</td><td style={tdS}>2</td><td style={tdS} /><td style={tdS}></td><td style={tdS}></td></tr>
+              </tbody>
+            </table>
+            <Formula>score = 1 − |forecast_rank − observed_rank| / 4</Formula>
+            <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginTop: 6 }}>
+              Examples: BKN vs BKN → 1.00 · BKN vs OVC → 0.75 · SCT vs OVC → 0.50 · FEW vs OVC → 0.25 · SKC vs OVC → 0.00
+            </p>
+          </ScoreRow>
+
+          <ScoreRow color="#38bdf8" label="Ceiling Altitude" score="0.0 – 1.0">
+            <p style={{ color: 'var(--muted)', lineHeight: 1.6, fontSize: 13, marginBottom: 8 }}>
+              Rather than comparing raw altitude numbers, each ceiling is mapped to an FAA flight-category
+              tier. The score reflects how far apart the tiers are. A reported ceiling of "none" (clear sky)
+              is treated as VFR (tier 3).
+            </p>
+            <table style={{ fontSize: 12, borderCollapse: 'collapse', marginBottom: 8 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['Tier', 'Category', 'Ceiling'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '4px 10px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: 10 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td style={tdS}>3</td><td style={tdS}>VFR</td><td style={tdS}>≥ 3,000 ft (or no ceiling)</td></tr>
+                <tr><td style={tdS}>2</td><td style={tdS}>MVFR</td><td style={tdS}>1,000 – 2,999 ft</td></tr>
+                <tr><td style={tdS}>1</td><td style={tdS}>IFR</td><td style={tdS}>500 – 999 ft</td></tr>
+                <tr><td style={tdS}>0</td><td style={tdS}>LIFR</td><td style={tdS}>{'< 500 ft'}</td></tr>
+              </tbody>
+            </table>
+            <Formula>score = max(0, 1 − |forecast_tier − observed_tier| / 3)</Formula>
+            <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginTop: 6 }}>
+              Same tier → 1.00 · 1 tier apart → 0.67 · 2 tiers apart → 0.33 · 3 tiers apart → 0.00
+            </p>
+            <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginTop: 4 }}>
+              Rationale: a ceiling of 900 ft vs 1,100 ft is an operationally trivial difference (both IFR);
+              a ceiling of 900 ft vs "no ceiling" is not. The tier system captures what actually matters to
+              a pilot rather than penalising every 100 ft of altitude error equally.
+            </p>
+          </ScoreRow>
+
+          <ScoreRow color="#f59e0b" label="Visibility" score="0.0 – 1.0">
+            <p style={{ color: 'var(--muted)', lineHeight: 1.6, fontSize: 13, marginBottom: 8 }}>
+              Visibility is scored using the same FAA flight-category tier system as ceiling altitude.
+              Each visibility value is mapped to a tier, and the score reflects the tier distance.
+            </p>
+            <table style={{ fontSize: 12, borderCollapse: 'collapse', marginBottom: 8 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['Tier', 'Category', 'Visibility'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '4px 10px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: 10 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td style={tdS}>3</td><td style={tdS}>VFR</td><td style={tdS}>≥ 5 SM</td></tr>
+                <tr><td style={tdS}>2</td><td style={tdS}>MVFR</td><td style={tdS}>3 – 4.99 SM</td></tr>
+                <tr><td style={tdS}>1</td><td style={tdS}>IFR</td><td style={tdS}>1 – 2.99 SM</td></tr>
+                <tr><td style={tdS}>0</td><td style={tdS}>LIFR</td><td style={tdS}>{'< 1 SM'}</td></tr>
+              </tbody>
+            </table>
+            <Formula>score = max(0, 1 − |forecast_tier − observed_tier| / 3)</Formula>
+            <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginTop: 6 }}>
+              P6SM forecasts ("greater than 6 SM") are assigned VFR tier 3, since the forecast is a lower
+              bound rather than an exact value — any observed visibility ≥ 5 SM scores a perfect tier match.
+            </p>
+          </ScoreRow>
+
+          <ScoreRow color="#10b981" label="Wind Speed" score="0.0 – 1.0">
+            <p style={{ color: 'var(--muted)', lineHeight: 1.6, fontSize: 13, marginBottom: 8 }}>
+              Wind speed is scored using percentage-based error on the peak wind magnitude for each side.
+              When a gust is reported, the gust becomes the peak — because the gust, not the sustained
+              speed, is what challenges pilots and aircraft systems.
+            </p>
+            <Formula>peak_wind = max(speed, gust)  ← when a gust is reported; else speed alone</Formula>
+            <Formula>error = |forecast_peak − observed_peak| / max(forecast_peak, observed_peak, 1)</Formula>
+            <Formula>score = max(0, 1 − error)</Formula>
+            <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginTop: 6 }}>
+              The percentage denominator means absolute errors are judged in context: a 10 kt miss on a
+              10 kt forecast (100% error → score ≈ 0.00) is penalised far more than a 10 kt miss on a
+              50 kt forecast (20% error → score ≈ 0.80). The floor of 1 kt in the denominator prevents
+              division by zero on calm-wind observations.
+            </p>
+            <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginTop: 4 }}>
+              Examples: forecast 10 G 18 kt vs observed 12 G 20 kt → peaks 18 vs 20, error = 2/20 = 10%, score = 0.90 ·
+              forecast 8 kt vs observed 20 kt → error = 12/20 = 60%, score = 0.40
+            </p>
+          </ScoreRow>
+
+          <ScoreRow color="#f43f5e" label="Wind Direction" score="0.0 – 1.0">
+            <p style={{ color: 'var(--muted)', lineHeight: 1.6, fontSize: 13, marginBottom: 8 }}>
+              Wind direction is scored with a continuous linear decay from perfect agreement to zero at 90°.
+              Circular arithmetic is used so that the shortest angular path is always taken — 350° vs 010° is
+              a 20° difference, not 340°.
+            </p>
+            <Formula>diff = min(|forecast° − observed°|, 360 − |forecast° − observed°|)  ← range 0–180°</Formula>
+            <Formula>score = max(0, 1 − diff / 90)</Formula>
+            <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginTop: 6 }}>
+              Score examples: 0° off → 1.00 · 30° off → 0.67 · 45° off → 0.50 · 60° off → 0.33 · 90°+ off → 0.00
+            </p>
+            <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginTop: 4 }}>
+              The 90° zero-point reflects that a right-angle wind error represents a fundamentally wrong
+              forecast — a pilot computing crosswind components would be pointing the wrong direction entirely.
+              Variable winds (VRB) on either side are excluded from scoring since there is no meaningful
+              direction to compare.
+            </p>
+          </ScoreRow>
+
+          <ScoreRow color="#a78bfa" label="Weather Phenomena" score="Weighted F1">
+            <p style={{ color: 'var(--muted)', lineHeight: 1.6, fontSize: 13, marginBottom: 8 }}>
+              Tracked weather phenomena (TS, RA, SN, FG, etc.) are scored using a severity-weighted F1 score.
+              Each phenomenon is assigned a hazard weight — missing a thunderstorm costs far more than missing
+              light mist.
+            </p>
+            <table style={{ fontSize: 12, borderCollapse: 'collapse', marginBottom: 8, width: '100%' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['Weight', 'Phenomena', 'Rationale'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '4px 10px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: 10 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td style={tdS}>5.0</td><td style={tdS}>TS, TSRA, TSSN, TSGR, …</td><td style={tdS}>Flight-safety critical</td></tr>
+                <tr><td style={tdS}>4.0</td><td style={tdS}>FZRA, FZDZ, FZSN</td><td style={tdS}>Icing hazard</td></tr>
+                <tr><td style={tdS}>3.0</td><td style={tdS}>BLSN, DRSN</td><td style={tdS}>Structural / visibility</td></tr>
+                <tr><td style={tdS}>2.0</td><td style={tdS}>SN, PL, RA, FG</td><td style={tdS}>Significant ops impact</td></tr>
+                <tr><td style={tdS}>1.0</td><td style={tdS}>DZ, GR, GS</td><td style={tdS}>Minor impact</td></tr>
+                <tr><td style={tdS}>0.5</td><td style={tdS}>BR, HZ, FU, SA, DU</td><td style={tdS}>Low impact</td></tr>
+              </tbody>
+            </table>
+            <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginBottom: 4 }}>
+              For each observation, phenomena are classified as:
+            </p>
+            <ul style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.8, paddingLeft: 20, marginBottom: 8 }}>
+              <li><strong style={{ color: 'var(--text)' }}>TP</strong> (true positive) — forecast and observed</li>
+              <li><strong style={{ color: 'var(--text)' }}>FP</strong> (false positive) — forecast but not observed (false alarm)</li>
+              <li><strong style={{ color: 'var(--text)' }}>FN</strong> (false negative) — observed but not forecast (miss)</li>
+            </ul>
+            <Formula>weighted precision = Σ weight(TP) / (Σ weight(TP) + Σ weight(FP))</Formula>
+            <Formula>weighted recall    = Σ weight(TP) / (Σ weight(TP) + Σ weight(FN))</Formula>
+            <Formula>F1 = 2 × precision × recall / (precision + recall)</Formula>
+            <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginTop: 6 }}>
+              The F1 score is the harmonic mean of precision and recall — it is low if either is low,
+              so a forecast must both avoid false alarms and catch what actually happened.
+              When only one side has weather, the available metric (precision or recall) is used alone in
+              the overall score.
+            </p>
+          </ScoreRow>
+
         </div>
       </Section>
 
       {/* ── Overall Score ── */}
       <Section title="Overall Score">
-        <p style={{ color: 'var(--muted)', lineHeight: 1.7 }}>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.7, marginBottom: 12 }}>
           The overall score is the unweighted mean of all non-null parameter scores
-          for a given observation. A parameter is excluded (null) when neither the
-          forecast nor the observation provided a value — for example, wind direction
-          is excluded when wind speed is calm on both sides.
+          for a given observation. All six parameters now produce continuous scores in the
+          range 0.0 – 1.0, so no parameter dominates simply by producing large binary swings.
+          A parameter is excluded (null) when there is no observation value to compare
+          against — for example, wind direction is excluded when winds are variable on one
+          side but not the other.
         </p>
-        <ScoreBand color="#22c55e" range="≥ 80%" label="Good" desc="Forecast closely matched conditions" />
-        <ScoreBand color="#f59e0b" range="60 – 79%" label="Fair" desc="Mostly correct, some parameter misses" />
-        <ScoreBand color="#ef4444" range="< 60%" label="Poor" desc="Significant forecast errors" />
+        <p style={{ color: 'var(--muted)', lineHeight: 1.7, marginBottom: 12 }}>
+          On the leaderboard, each airport's displayed score is the mean overall score across
+          all of its stored observations (minimum observation count selectable via the filter).
+          The weight sliders let you compute a custom weighted mean of the five parameter
+          scores client-side without re-querying the server.
+        </p>
+        <ScoreBand color="#22c55e" range="≥ 80%" label="Good" desc="Forecast closely matched conditions across all parameters" />
+        <ScoreBand color="#f59e0b" range="60 – 79%" label="Fair" desc="Mostly correct, with meaningful misses on some parameters" />
+        <ScoreBand color="#ef4444" range="< 60%" label="Poor" desc="Significant forecast errors across one or more parameters" />
       </Section>
 
       {/* ── TAF Alignment ── */}
@@ -128,7 +269,28 @@ export default function About() {
   )
 }
 
+// ── Shared cell style ─────────────────────────────────────────────────────
+const tdS = { padding: '5px 10px', color: 'var(--muted)', borderBottom: '1px solid var(--border)' }
+
 // ── Sub-components ────────────────────────────────────────────────────────
+
+function Formula({ children }) {
+  return (
+    <div style={{
+      fontFamily: 'monospace',
+      fontSize: 12,
+      background: 'var(--surface2)',
+      border: '1px solid var(--border)',
+      borderRadius: 6,
+      padding: '7px 12px',
+      margin: '6px 0',
+      color: 'var(--accent2)',
+      letterSpacing: '0.2px',
+    }}>
+      {children}
+    </div>
+  )
+}
 
 function Section({ title, children }) {
   return (
@@ -154,16 +316,16 @@ function CatRow({ badge, badgeCls, ceil, vis, meaning }) {
   )
 }
 
-function ScoreRow({ color, label, score, description }) {
+function ScoreRow({ color, label, score, children }) {
   return (
     <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
       <div style={{ width: 4, borderRadius: 4, background: color, flexShrink: 0, alignSelf: 'stretch', minHeight: 40 }} />
-      <div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
           <span style={{ fontWeight: 700, color: 'var(--text)' }}>{label}</span>
           <span style={{ fontSize: 11, color: color, fontWeight: 600, background: `${color}22`, padding: '1px 7px', borderRadius: 4 }}>{score}</span>
         </div>
-        <p style={{ color: 'var(--muted)', lineHeight: 1.6, fontSize: 13 }}>{description}</p>
+        {children}
       </div>
     </div>
   )
