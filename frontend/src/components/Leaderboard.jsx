@@ -60,6 +60,7 @@ export default function Leaderboard({ onSelectAirport }) {
   const [minObs,        setMinObs]        = useState(1)
   const [stateFilter,   setStateFilter]   = useState('')
   const [militaryOnly,  setMilitaryOnly]  = useState(false)
+  const [sortAsc,       setSortAsc]       = useState(false)
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState(null)
   const [trackingSince, setTrackingSince] = useState(null)
@@ -88,9 +89,9 @@ export default function Leaderboard({ onSelectAirport }) {
     return [...rows].sort((a, b) => {
       const wa = weightedScore(a, weights) ?? -1
       const wb = weightedScore(b, weights) ?? -1
-      return wb - wa
+      return sortAsc ? wa - wb : wb - wa
     })
-  }, [rows, weights])
+  }, [rows, weights, sortAsc])
 
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0)
 
@@ -165,7 +166,9 @@ export default function Leaderboard({ onSelectAirport }) {
                     <th>Airport</th>
                     <th>State</th>
                     <th>Obs</th>
-                    <th>Overall</th>
+                    <th style={{ cursor: 'pointer', userSelect: 'none', color: 'var(--accent2)' }} onClick={() => setSortAsc(a => !a)}>
+                      Overall <span style={{ fontSize: 10 }}>{sortAsc ? '▲' : '▼'}</span>
+                    </th>
                     {PARAM_COLS.map(col => (
                       <th key={col.key}>{col.label}</th>
                     ))}
