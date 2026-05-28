@@ -139,6 +139,17 @@ US_TAF_STATIONS: list[str] = [
     "KSKA", "KSKF", "KSUU", "KTBN", "KTIK", "KVAD", "KVBG", "KVPS", "KWRB", "KWRI",
 ]
 
+# Subset of US_TAF_STATIONS that are military or joint-use military fields.
+MILITARY_STATIONS: set[str] = {
+    "KBAB", "KBAD", "KBIF", "KBKF", "KDMA", "KDOV", "KEND", "KFAF", "KFBG", "KFCS",
+    "KFFO", "KFHU", "KFRI", "KFTK", "KGRK", "KGUS", "KHIF", "KHOP", "KHRT", "KHST",
+    "KLFI", "KLRF", "KLTS", "KMCF", "KMGE", "KMIB", "KMUO", "KNBC", "KNFL", "KNFW",
+    "KNGU", "KNHK", "KNKX", "KNLC", "KNMM", "KNPA", "KNQI", "KNRB", "KNSE", "KNTU",
+    "KNUC", "KNUW", "KNXP", "KOFF", "KPAM", "KPOE", "KRCA", "KRDR", "KRND", "KSEM",
+    "KSKA", "KSKF", "KSUU", "KTBN", "KTIK", "KVAD", "KVBG", "KVPS", "KWRB", "KWRI",
+    "PAED", "PAEI", "PHHI", "PHNG",
+}
+
 
 # ---------------------------------------------------------------------------
 # Airport metadata fetch

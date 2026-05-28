@@ -29,7 +29,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, text
 
 from database import get_session, init_db
-from ingest import process_station, US_TAF_STATIONS, _taf_orm_to_dict, _metar_orm_to_dict
+from ingest import process_station, US_TAF_STATIONS, MILITARY_STATIONS, _taf_orm_to_dict, _metar_orm_to_dict
 from models import Airport, ForecastScore, METAR, TAF
 
 logger = logging.getLogger(__name__)
@@ -543,6 +543,7 @@ def leaderboard(
     min_obs:  int = Query(5, ge=1, description="Minimum observations required for inclusion"),
     limit:    int = Query(1000, ge=1, le=1000),
     state:    Optional[str] = Query(None, description="Filter by US state abbreviation, e.g. IL"),
+    military: bool = Query(False, description="If true, return only military/joint-use stations"),
 ):
     """
     Ranked leaderboard of all airports with sufficient scored observations.
@@ -577,6 +578,8 @@ def leaderboard(
         )
         if state:
             q = q.filter(Airport.state == state.upper())
+        if military:
+            q = q.filter(Airport.icao.in_(MILITARY_STATIONS))
         rows = q.all()
 
     return [

@@ -59,6 +59,7 @@ export default function Leaderboard({ onSelectAirport }) {
   const [rows,          setRows]          = useState([])
   const [minObs,        setMinObs]        = useState(1)
   const [stateFilter,   setStateFilter]   = useState('')
+  const [militaryOnly,  setMilitaryOnly]  = useState(false)
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState(null)
   const [trackingSince, setTrackingSince] = useState(null)
@@ -76,11 +77,11 @@ export default function Leaderboard({ onSelectAirport }) {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    fetchLeaderboard('overall_score', minObs, stateFilter)
+    fetchLeaderboard('overall_score', minObs, stateFilter, militaryOnly)
       .then(setRows)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [minObs, stateFilter])
+  }, [minObs, stateFilter, militaryOnly])
 
   // Re-sort client-side whenever rows or weights change
   const sortedRows = useMemo(() => {
@@ -118,6 +119,15 @@ export default function Leaderboard({ onSelectAirport }) {
               <option value=''>All</option>
               {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={militaryOnly}
+              onChange={e => setMilitaryOnly(e.target.checked)}
+              style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
+            />
+            Military only
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
             Min observations
