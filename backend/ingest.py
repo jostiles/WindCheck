@@ -160,10 +160,11 @@ def fetch_airport_info(icao: str) -> Optional[dict]:
 
     rec = data[0]
     return {
-        "icao": icao.upper(),
-        "name": rec.get("site") or rec.get("name") or icao,
-        "lat":  rec.get("lat"),
-        "lon":  rec.get("lon"),
+        "icao":  icao.upper(),
+        "name":  rec.get("site") or rec.get("name") or icao,
+        "state": rec.get("state") or None,
+        "lat":   rec.get("lat"),
+        "lon":   rec.get("lon"),
     }
 
 
@@ -178,13 +179,17 @@ def _upsert_airport(session, icao: str, info: Optional[dict]) -> Airport:
     """
     existing = session.get(Airport, icao.upper())
     if existing:
+        # Backfill state if it wasn't set on initial insert
+        if existing.state is None and info and info.get("state"):
+            existing.state = info["state"]
         return existing
 
     ap = Airport(
-        icao=icao.upper(),
-        name=(info or {}).get("name") or icao.upper(),
-        lat =(info or {}).get("lat"),
-        lon =(info or {}).get("lon"),
+        icao =icao.upper(),
+        name =(info or {}).get("name") or icao.upper(),
+        state=(info or {}).get("state"),
+        lat  =(info or {}).get("lat"),
+        lon  =(info or {}).get("lon"),
     )
     session.add(ap)
     session.flush()

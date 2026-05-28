@@ -27,8 +27,8 @@ export const fetchRecent   = (icao, limit = 48) =>
   _get(`/airport/${icao.toUpperCase()}/recent?limit=${limit}`)
 export const fetchMapData     = (minObs = 1) => _get(`/map-data?min_obs=${minObs}`)
 export const fetchStats       = ()           => _get('/stats')
-export const fetchLeaderboard = (sortBy = 'overall_score', minObs = 1) =>
-  _get(`/leaderboard?sort_by=${sortBy}&min_obs=${minObs}&limit=500`)
+export const fetchLeaderboard = (sortBy = 'overall_score', minObs = 1, state = '') =>
+  _get(`/leaderboard?sort_by=${sortBy}&min_obs=${minObs}&limit=500${state ? `&state=${state}` : ''}`)
 
 export async function triggerIngest(icao) {
   const res = await fetch(`${API_BASE}/ingest/${icao.toUpperCase()}`, { method: 'POST' })

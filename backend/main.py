@@ -119,6 +119,7 @@ class LeaderboardEntry(BaseModel):
     rank:                   int
     icao:                   str
     name:                   Optional[str]
+    state:                  Optional[str]
     observation_count:      int
     overall_score:          Optional[float]
     ceiling_coverage_score: Optional[float]
@@ -531,6 +532,7 @@ def leaderboard(
                                       "visibility_score | wind_speed_score | wind_dir_score"),
     min_obs:  int = Query(5, ge=1, description="Minimum observations required for inclusion"),
     limit:    int = Query(500, ge=1, le=1000),
+    state:    Optional[str] = Query(None, description="Filter by US state abbreviation, e.g. IL"),
 ):
     """
     Ranked leaderboard of all airports with sufficient scored observations.
@@ -550,25 +552,29 @@ def leaderboard(
     sort_col = _sort_map.get(sort_by, _sort_map["overall_score"])
 
     with get_session() as session:
-        rows = (
+        q = (
             session.query(
                 Airport.icao,
                 Airport.name,
+                Airport.state,
                 *_score_agg_cols(),
             )
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
-            .group_by(Airport.icao, Airport.name)
+            .group_by(Airport.icao, Airport.name, Airport.state)
             .having(func.count(ForecastScore.id) >= min_obs)
             .order_by(sort_col.desc().nullslast())
             .limit(limit)
-            .all()
         )
+        if state:
+            q = q.filter(Airport.state == state.upper())
+        rows = q.all()
 
     return [
         LeaderboardEntry(
             rank                   =i + 1,
             icao                   =r.icao,
             name                   =r.name,
+            state                  =r.state,
             observation_count      =r.cnt,
             overall_score          =_round(r.overall),
             ceiling_coverage_score =_round(r.ceil_cov),

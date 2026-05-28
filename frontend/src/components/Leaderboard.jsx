@@ -9,6 +9,7 @@ import { fetchLeaderboard, fetchStats } from '../api'
 const COLUMNS = [
   { key: 'rank',                   label: '#',          sortable: false },
   { key: 'icao',                   label: 'Airport',    sortable: false },
+  { key: 'state',                  label: 'State',      sortable: false },
   { key: 'observation_count',      label: 'Obs',        sortable: false },
   { key: 'overall_score',          label: 'Overall',    sortable: true  },
   { key: 'ceiling_coverage_score', label: 'Sky Cover',  sortable: true  },
@@ -16,6 +17,13 @@ const COLUMNS = [
   { key: 'visibility_score',       label: 'Visibility', sortable: true  },
   { key: 'wind_speed_score',       label: 'Wind Spd',   sortable: true  },
   { key: 'wind_dir_score',         label: 'Wind Dir',   sortable: true  },
+]
+
+const US_STATES = [
+  'AK','AL','AR','AZ','CA','CO','CT','DC','DE','FL','GA','HI','IA','ID','IL','IN',
+  'KS','KY','LA','MA','MD','ME','MI','MN','MO','MS','MT','NC','ND','NE','NH','NJ',
+  'NM','NV','NY','OH','OK','OR','PA','PR','RI','SC','SD','TN','TX','UT','VA','VI',
+  'VT','WA','WI','WV','WY',
 ]
 
 function ScoreCell({ value }) {
@@ -30,6 +38,7 @@ export default function Leaderboard({ onSelectAirport }) {
   const [rows,         setRows]         = useState([])
   const [sortBy,       setSortBy]       = useState('overall_score')
   const [minObs,       setMinObs]       = useState(1)
+  const [stateFilter,  setStateFilter]  = useState('')
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState(null)
   const [trackingSince, setTrackingSince] = useState(null)
@@ -46,11 +55,11 @@ export default function Leaderboard({ onSelectAirport }) {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    fetchLeaderboard(sortBy, minObs)
+    fetchLeaderboard(sortBy, minObs, stateFilter)
       .then(setRows)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [sortBy, minObs])
+  }, [sortBy, minObs, stateFilter])
 
   function handleSort(col) {
     if (col.sortable) setSortBy(col.key)
@@ -58,7 +67,6 @@ export default function Leaderboard({ onSelectAirport }) {
 
   return (
     <div>
-      <div>Hello</div>
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
@@ -69,16 +77,29 @@ export default function Leaderboard({ onSelectAirport }) {
             </span>
           )}
         </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', marginLeft: 'auto' }}>
-          Min observations
-          <select
-            value={minObs}
-            onChange={e => setMinObs(Number(e.target.value))}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '3px 8px', fontSize: 12 }}
-          >
-            {[1, 3, 5, 10, 20].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+            State
+            <select
+              value={stateFilter}
+              onChange={e => setStateFilter(e.target.value)}
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '3px 8px', fontSize: 12 }}
+            >
+              <option value=''>All</option>
+              {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+            Min observations
+            <select
+              value={minObs}
+              onChange={e => setMinObs(Number(e.target.value))}
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '3px 8px', fontSize: 12 }}
+            >
+              {[1, 3, 5, 10, 20].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+        </div>
       </div>
 
       {error && <div className="error-banner">{error}</div>}
@@ -128,6 +149,7 @@ export default function Leaderboard({ onSelectAirport }) {
                           </div>
                         )}
                       </td>
+                      <td style={{ color: 'var(--muted)' }}>{r.state ?? '—'}</td>
                       <td style={{ color: 'var(--muted)' }}>{r.observation_count}</td>
                       <td><ScoreCell value={r.overall_score} /></td>
                       <td><ScoreCell value={r.ceiling_coverage_score} /></td>

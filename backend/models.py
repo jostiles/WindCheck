@@ -47,10 +47,11 @@ class Airport(Base):
 
     __tablename__ = "airports"
 
-    icao = Column(String(4), primary_key=True)
-    name = Column(String(200))
-    lat  = Column(Float)
-    lon  = Column(Float)
+    icao  = Column(String(4), primary_key=True)
+    name  = Column(String(200))
+    state = Column(String(2))   # US state abbreviation, e.g. "IL"
+    lat   = Column(Float)
+    lon   = Column(Float)
 
     metars = relationship("METAR",         back_populates="airport")
     tafs   = relationship("TAF",           back_populates="airport")

@@ -77,6 +77,7 @@ def _migrate_schema() -> None:
         ("metars",          "ceiling_coverage",         "TEXT"),
         ("forecast_scores", "ceiling_coverage_score",   "REAL"),
         ("forecast_scores", "ceiling_altitude_score",   "REAL"),
+        ("airports",        "state",                    "TEXT"),
     ]
     with _engine.connect() as conn:
         for table, column, col_type in migrations:
