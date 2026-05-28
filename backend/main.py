@@ -573,14 +573,12 @@ def leaderboard(
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
             .group_by(Airport.icao, Airport.name, Airport.state)
             .having(func.count(ForecastScore.id) >= min_obs)
-            .order_by(sort_col.desc().nullslast())
-            .limit(limit)
         )
         if state:
             q = q.filter(Airport.state == state.upper())
         if military:
             q = q.filter(Airport.icao.in_(MILITARY_STATIONS))
-        rows = q.all()
+        rows = q.order_by(sort_col.desc().nullslast()).limit(limit).all()
 
     return [
         LeaderboardEntry(
