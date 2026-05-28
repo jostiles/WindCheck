@@ -181,8 +181,9 @@ export default function App() {
 
       {/* ── Header ── */}
       <header className="app-header">
-        <div className="app-logo" style={{ cursor: 'pointer' }} onClick={backToLeaderboard}>
-          Wind<span>Check</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, cursor: 'pointer' }} onClick={backToLeaderboard}>
+          <div className="app-logo">Wind<span>Check</span></div>
+          <div style={{ fontSize: 10, fontStyle: 'italic', color: 'var(--muted)', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>Every METAR is a chance to be disappointed.</div>
         </div>
 
         <ZuluClock />
