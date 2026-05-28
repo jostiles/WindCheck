@@ -23,7 +23,7 @@ import logging
 import os
 from typing import Optional
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import func, text
@@ -54,8 +54,8 @@ _allowed_origins = _default_origins + _extra
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -63,6 +63,16 @@ app.add_middleware(
 def _startup() -> None:
     init_db()
     logging.basicConfig(level=logging.INFO)
+
+
+_INGEST_KEY = os.getenv("INGEST_API_KEY", "")
+
+def _require_ingest_key(x_api_key: str = Header(default="")):
+    """Dependency that enforces the INGEST_API_KEY on write endpoints."""
+    if not _INGEST_KEY:
+        return  # key not configured — allow (dev mode)
+    if x_api_key != _INGEST_KEY:
+        raise HTTPException(401, "Invalid or missing X-Api-Key header")
 
 
 # ---------------------------------------------------------------------------
@@ -605,7 +615,7 @@ def _run_ingest(icao: str) -> None:
 
 
 @app.post("/ingest/{icao}", response_model=IngestResponse)
-def ingest_airport(icao: str, background_tasks: BackgroundTasks):
+def ingest_airport(icao: str, background_tasks: BackgroundTasks, _=Depends(_require_ingest_key)):
     """
     Trigger a background fetch-and-score run for one airport.
 
@@ -628,6 +638,7 @@ def ingest_airport(icao: str, background_tasks: BackgroundTasks):
 def ingest_batch(
     background_tasks: BackgroundTasks,
     airports: Optional[list[str]] = None,
+    _=Depends(_require_ingest_key),
 ):
     """
     Trigger background ingest for a list of airports.

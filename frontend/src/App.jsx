@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import './index.css'
-import { fetchAirport, fetchByHour, fetchRecent, triggerIngest } from './api'
+import { fetchAirport, fetchByHour, fetchRecent } from './api'
 import MetricsGrid         from './components/MetricsGrid'
 import AccuracyChart       from './components/AccuracyChart'
 import RecentTable         from './components/RecentTable'
@@ -42,8 +42,6 @@ function AirportView({ icao, onClose }) {
   const [recent,   setRecent]   = useState([])
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(null)
-  const [ingesting, setIngesting] = useState(false)
-  const [ingestMsg, setIngestMsg] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -64,20 +62,7 @@ function AirportView({ icao, onClose }) {
 
   useEffect(() => { load() }, [load])
 
-  async function handleIngest() {
-    setIngesting(true)
-    setIngestMsg(null)
-    try {
-      const res = await triggerIngest(icao)
-      setIngestMsg(res.status === 'queued' ? 'Ingest queued — refresh in ~30 s' : 'Already running')
-    } catch (e) {
-      setIngestMsg(`Error: ${e.message}`)
-    } finally {
-      setIngesting(false)
-    }
-  }
-
-  if (loading) return (
+if (loading) return (
     <div className="state-box" style={{ paddingTop: 80 }}>
       <div className="spinner" />
     </div>
@@ -106,14 +91,6 @@ function AirportView({ icao, onClose }) {
         <div className="airport-icao">{icao}</div>
         {name && <div className="airport-name">{name.trim()}</div>}
         <div className="airport-actions">
-          {ingestMsg && <span className="ingest-badge">{ingestMsg}</span>}
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={handleIngest}
-            disabled={ingesting}
-          >
-            {ingesting ? '…' : '↻ Refresh data'}
-          </button>
           <button className="btn btn-ghost btn-sm" onClick={load}>
             ↺ Reload
           </button>
