@@ -15,14 +15,6 @@ const PARAM_COLS = [
   { key: 'wind_dir_score',         label: 'Wind Dir'   },
 ]
 
-const DEFAULT_WEIGHTS = {
-  ceiling_coverage_score: 1,
-  ceiling_altitude_score: 1,
-  visibility_score:       1,
-  wind_speed_score:       1,
-  wind_dir_score:         1,
-}
-
 const US_STATES = [
   'AK','AL','AR','AZ','CA','CO','CT','DC','DE','FL','GA','HI','IA','ID','IL','IN',
   'KS','KY','LA','MA','MD','ME','MI','MN','MO','MS','MT','NC','ND','NE','NH','NJ',
@@ -55,7 +47,7 @@ function ScoreCell({ value }) {
   return <span className="score-cell" style={{ color }}>{pct}%</span>
 }
 
-export default function Leaderboard({ onSelectAirport }) {
+export default function Leaderboard({ onSelectAirport, weights, setWeights, defaultWeights }) {
   const [rows,          setRows]          = useState([])
   const [minObs,        setMinObs]        = useState(1)
   const [stateFilter,   setStateFilter]   = useState('')
@@ -65,7 +57,6 @@ export default function Leaderboard({ onSelectAirport }) {
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState(null)
   const [trackingSince, setTrackingSince] = useState(null)
-  const [weights,       setWeights]       = useState(DEFAULT_WEIGHTS)
 
   useEffect(() => {
     fetchStats().then(s => {
@@ -110,7 +101,7 @@ export default function Leaderboard({ onSelectAirport }) {
     setWeights(prev => ({ ...prev, [key]: Math.max(0, Math.min(10, Number(val))) }))
   }
 
-  const allEqual = Object.values(weights).every(w => w === weights[PARAM_COLS[0].key])
+  const allEqual = Object.entries(weights).every(([k, v]) => v === defaultWeights[k])
 
   return (
     <div>
@@ -150,7 +141,7 @@ export default function Leaderboard({ onSelectAirport }) {
           {!allEqual && (
             <button
               className="btn btn-ghost btn-sm"
-              onClick={() => setWeights(DEFAULT_WEIGHTS)}
+              onClick={() => setWeights(defaultWeights)}
             >
               Reset weights
             </button>

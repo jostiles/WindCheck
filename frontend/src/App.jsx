@@ -7,8 +7,17 @@ import RecentTable         from './components/RecentTable'
 import Leaderboard         from './components/Leaderboard'
 import About               from './components/About'
 import Welcome             from './components/Welcome'
+import TailEndCharlie      from './components/TailEndCharlie'
 import SnapshotComparison  from './components/SnapshotComparison'
 import MapView             from './components/MapView'
+
+const DEFAULT_WEIGHTS = {
+  ceiling_coverage_score: 1,
+  ceiling_altitude_score: 1,
+  visibility_score:       1,
+  wind_speed_score:       1,
+  wind_dir_score:         1,
+}
 
 // ── Zulu clock ───────────────────────────────────────────────────────────────
 
@@ -130,6 +139,7 @@ export default function App() {
   const [query,          setQuery]          = useState('')
   const [selected,       setSelected]       = useState(null)       // active airport ICAO
   const [recentAirports, setRecentAirports] = useState([])         // up to 6, most-recent first
+  const [weights,        setWeights]        = useState(DEFAULT_WEIGHTS)
 
   function openAirport(icao) {
     setRecentAirports(prev => {
@@ -263,6 +273,12 @@ export default function App() {
           What site did Jordan just send me?
         </button>
         <button
+          className={`tab ${tab === 'tailend' ? 'active' : ''}`}
+          onClick={() => setTab('tailend')}
+        >
+          Tail End Charlie
+        </button>
+        <button
           className={`tab ${tab === 'about' ? 'active' : ''}`}
           onClick={() => setTab('about')}
         >
@@ -276,11 +292,13 @@ export default function App() {
           ? <Welcome />
           : tab === 'about'
           ? <About />
+          : tab === 'tailend'
+          ? <TailEndCharlie weights={weights} onSelectAirport={openAirport} />
           : tab === 'map'
             ? <MapView onSelectAirport={selectFromMap} />
             : tab === 'airport' && selected
               ? <AirportView key={selected} icao={selected} onClose={backToLeaderboard} />
-              : <Leaderboard onSelectAirport={selectAirport} />
+              : <Leaderboard onSelectAirport={selectAirport} weights={weights} setWeights={setWeights} defaultWeights={DEFAULT_WEIGHTS} />
         }
 
       </main>
