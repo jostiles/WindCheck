@@ -200,8 +200,8 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                     <th>#</th>
                     <th>Airport</th>
                     <th>State</th>
-                    <th>Region</th>
-                    <th>WFO</th>
+                    <th title="NOAA Climate Region — one of 9 geographic groupings defined by the National Centers for Environmental Information (ncei.noaa.gov) based on climate similarity. Derived from the airport's state.">Region ⓘ</th>
+                    <th title="Weather Forecast Office — the NWS office responsible for issuing TAFs at this location. Sourced from api.weather.gov/points using the airport's lat/lon.">WFO ⓘ</th>
                     <th>Mil</th>
                     <th>Obs</th>
                     {[{ key: 'overall', label: 'Overall' }, ...PARAM_COLS].map(col => (
