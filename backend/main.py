@@ -132,6 +132,9 @@ class LeaderboardEntry(BaseModel):
     state:                  Optional[str]
     wfo:                    Optional[str]
     climate_region:         Optional[str]
+    lat:                    Optional[float]
+    lon:                    Optional[float]
+    is_military:            bool
     observation_count:      int
     overall_score:          Optional[float]
     ceiling_coverage_score: Optional[float]
@@ -574,10 +577,12 @@ def leaderboard(
                 Airport.state,
                 Airport.wfo,
                 Airport.climate_region,
+                Airport.lat,
+                Airport.lon,
                 *_score_agg_cols(),
             )
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
-            .group_by(Airport.icao, Airport.name, Airport.state, Airport.wfo, Airport.climate_region)
+            .group_by(Airport.icao, Airport.name, Airport.state, Airport.wfo, Airport.climate_region, Airport.lat, Airport.lon)
             .having(func.count(ForecastScore.id) >= min_obs)
         )
         if state:
@@ -598,6 +603,9 @@ def leaderboard(
             state                  =r.state,
             wfo                    =r.wfo,
             climate_region         =r.climate_region,
+            lat                    =r.lat,
+            lon                    =r.lon,
+            is_military            =r.icao in MILITARY_STATIONS,
             observation_count      =r.cnt,
             overall_score          =_round(r.overall),
             ceiling_coverage_score =_round(r.ceil_cov),

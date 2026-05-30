@@ -96,10 +96,25 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
   // Re-sort client-side whenever rows, weights, sortKey, or sortAsc change
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
-      const val = r => sortKey === 'overall'
-        ? (weightedScore(r, weights) ?? -1)
-        : (r[sortKey] ?? -1)
-      return sortAsc ? val(a) - val(b) : val(b) - val(a)
+      let va, vb
+      if (sortKey === 'overall') {
+        va = weightedScore(a, weights) ?? -1
+        vb = weightedScore(b, weights) ?? -1
+      } else if (sortKey === 'region') {
+        va = a.climate_region ?? ''
+        vb = b.climate_region ?? ''
+      } else if (sortKey === 'wfo') {
+        va = a.wfo ?? ''
+        vb = b.wfo ?? ''
+      } else if (sortKey === 'military') {
+        va = a.is_military ? 1 : 0
+        vb = b.is_military ? 1 : 0
+      } else {
+        va = a[sortKey] ?? -1
+        vb = b[sortKey] ?? -1
+      }
+      if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va)
+      return sortAsc ? va - vb : vb - va
     })
   }, [rows, weights, sortAsc, sortKey])
 
@@ -195,6 +210,23 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                     <th>#</th>
                     <th>Airport</th>
                     <th>State</th>
+                    {[
+                      { key: 'region',   label: 'Region'  },
+                      { key: 'wfo',      label: 'WFO'     },
+                      { key: 'military', label: 'Mil'     },
+                    ].map(col => (
+                      <th
+                        key={col.key}
+                        className="sortable"
+                        style={{ cursor: 'pointer', userSelect: 'none', color: sortKey === col.key ? 'var(--accent2)' : '' }}
+                        onClick={() => handleColSort(col.key)}
+                      >
+                        {col.label}
+                        <span className="sort-arrow" style={{ fontSize: 10 }}>
+                          {sortKey === col.key ? (sortAsc ? ' ▲' : ' ▼') : ' ·'}
+                        </span>
+                      </th>
+                    ))}
                     <th>Obs</th>
                     {[{ key: 'overall', label: 'Overall' }, ...PARAM_COLS].map(col => (
                       <th
@@ -212,7 +244,7 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                   </tr>
                   {/* Weight sliders */}
                   <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    <th colSpan={4} style={{ padding: '6px 14px', fontWeight: 400, fontSize: 11, color: 'var(--muted)', textAlign: 'left', textTransform: 'none', letterSpacing: 0 }}>
+                    <th colSpan={7} style={{ padding: '6px 14px', fontWeight: 400, fontSize: 11, color: 'var(--muted)', textAlign: 'left', textTransform: 'none', letterSpacing: 0 }}>
                       Weights
                     </th>
                     <th style={{ padding: '6px 14px' }} />
@@ -245,23 +277,30 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                       <tr key={r.icao}>
                         <td className="rank-cell">{i + 1}</td>
                         <td>
-                          <div className="airport-link" onClick={() => onSelectAirport(r.icao)}>
-                            {r.icao}
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                            <div className="airport-link" onClick={() => onSelectAirport(r.icao)}>
+                              {r.icao}
+                            </div>
+                            {r.lat != null && r.lon != null && (
+                              <span style={{ fontSize: 10, color: 'var(--gray)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                                {Math.abs(r.lat).toFixed(2)}°{r.lat >= 0 ? 'N' : 'S'} {Math.abs(r.lon).toFixed(2)}°{r.lon >= 0 ? 'E' : 'W'}
+                              </span>
+                            )}
                           </div>
                           {r.name && (
                             <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
                               {r.name.trim()}
                             </div>
                           )}
-                          {(r.wfo || r.climate_region) && (
-                            <div style={{ fontSize: 10, color: 'var(--gray)', marginTop: 2, display: 'flex', gap: 6 }}>
-                              {r.wfo && <span>WFO {r.wfo}</span>}
-                              {r.wfo && r.climate_region && <span>·</span>}
-                              {r.climate_region && <span>{r.climate_region}</span>}
-                            </div>
-                          )}
                         </td>
                         <td style={{ color: 'var(--muted)' }}>{r.state ?? '—'}</td>
+                        <td style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{r.climate_region ?? '—'}</td>
+                        <td style={{ fontSize: 11, color: 'var(--muted)' }}>{r.wfo ?? '—'}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          {r.is_military && (
+                            <span style={{ fontSize: 10, fontWeight: 700, background: '#1e3a5f', color: '#93c5fd', borderRadius: 4, padding: '1px 5px' }}>MIL</span>
+                          )}
+                        </td>
                         <td style={{ color: 'var(--muted)' }}>{r.observation_count}</td>
                         <td><ScoreCell value={ws} /></td>
                         <td><ScoreCell value={r.ceiling_coverage_score} /></td>
