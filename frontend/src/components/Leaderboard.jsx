@@ -22,6 +22,12 @@ const US_STATES = [
   'VT','WA','WI','WV','WY',
 ]
 
+const CLIMATE_REGIONS = [
+  'Northeast', 'Ohio Valley', 'Upper Midwest', 'Southeast',
+  'N. Rockies & Plains', 'Southwest', 'Northwest', 'West', 'South',
+  'Alaska', 'Hawaii', 'Caribbean', 'Pacific Islands',
+]
+
 const SELECT_STYLE = {
   background: 'var(--surface2)', border: '1px solid var(--border)',
   color: 'var(--text)', borderRadius: 6, padding: '3px 8px', fontSize: 12,
@@ -48,15 +54,17 @@ function ScoreCell({ value }) {
 }
 
 export default function Leaderboard({ onSelectAirport, weights, setWeights, defaultWeights }) {
-  const [rows,          setRows]          = useState([])
-  const [minObs,        setMinObs]        = useState(1)
-  const [stateFilter,   setStateFilter]   = useState('')
-  const [militaryOnly,  setMilitaryOnly]  = useState(false)
-  const [sortAsc,       setSortAsc]       = useState(false)
-  const [sortKey,       setSortKey]       = useState('overall')
-  const [loading,       setLoading]       = useState(false)
-  const [error,         setError]         = useState(null)
-  const [trackingSince, setTrackingSince] = useState(null)
+  const [rows,           setRows]           = useState([])
+  const [minObs,         setMinObs]         = useState(1)
+  const [stateFilter,    setStateFilter]    = useState('')
+  const [militaryOnly,   setMilitaryOnly]   = useState(false)
+  const [wfoFilter,      setWfoFilter]      = useState('')
+  const [regionFilter,   setRegionFilter]   = useState('')
+  const [sortAsc,        setSortAsc]        = useState(false)
+  const [sortKey,        setSortKey]        = useState('overall')
+  const [loading,        setLoading]        = useState(false)
+  const [error,          setError]          = useState(null)
+  const [trackingSince,  setTrackingSince]  = useState(null)
 
   useEffect(() => {
     fetchStats().then(s => {
@@ -70,11 +78,11 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
   useEffect(() => {
     setLoading(true)
     setError(null)
-    fetchLeaderboard('overall_score', minObs, stateFilter, militaryOnly)
+    fetchLeaderboard('overall_score', minObs, stateFilter, militaryOnly, wfoFilter, regionFilter)
       .then(setRows)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [minObs, stateFilter, militaryOnly])
+  }, [minObs, stateFilter, militaryOnly, wfoFilter, regionFilter])
 
   function handleColSort(key) {
     if (sortKey === key) {
@@ -97,6 +105,12 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
 
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0)
 
+  // Unique WFOs present in the current (unfiltered) result set, sorted
+  const wfoOptions = useMemo(() => {
+    const set = new Set(rows.map(r => r.wfo).filter(Boolean))
+    return [...set].sort()
+  }, [rows])
+
   function setWeight(key, val) {
     setWeights(prev => ({ ...prev, [key]: Math.max(0, Math.min(10, Number(val))) }))
   }
@@ -115,7 +129,21 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+            Region
+            <select value={regionFilter} onChange={e => setRegionFilter(e.target.value)} style={SELECT_STYLE}>
+              <option value=''>All</option>
+              {CLIMATE_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+            WFO
+            <select value={wfoFilter} onChange={e => setWfoFilter(e.target.value)} style={SELECT_STYLE}>
+              <option value=''>All</option>
+              {wfoOptions.map(w => <option key={w} value={w}>{w}</option>)}
+            </select>
+          </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
             State
             <select value={stateFilter} onChange={e => setStateFilter(e.target.value)} style={SELECT_STYLE}>
@@ -223,6 +251,13 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                           {r.name && (
                             <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
                               {r.name.trim()}
+                            </div>
+                          )}
+                          {(r.wfo || r.climate_region) && (
+                            <div style={{ fontSize: 10, color: 'var(--gray)', marginTop: 2, display: 'flex', gap: 6 }}>
+                              {r.wfo && <span>WFO {r.wfo}</span>}
+                              {r.wfo && r.climate_region && <span>·</span>}
+                              {r.climate_region && <span>{r.climate_region}</span>}
                             </div>
                           )}
                         </td>

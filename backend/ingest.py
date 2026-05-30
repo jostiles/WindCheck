@@ -152,6 +152,48 @@ MILITARY_STATIONS: set[str] = {
 
 
 # ---------------------------------------------------------------------------
+# NOAA Climate Region lookup (state → region)
+# Source: https://www.ncei.noaa.gov/monitoring-references/us-climate-regions
+# ---------------------------------------------------------------------------
+
+_STATE_CLIMATE_REGION: dict[str, str] = {
+    # Northeast
+    "CT": "Northeast", "DE": "Northeast", "ME": "Northeast", "MD": "Northeast",
+    "MA": "Northeast", "NH": "Northeast", "NJ": "Northeast", "NY": "Northeast",
+    "PA": "Northeast", "RI": "Northeast", "VT": "Northeast",
+    # Ohio Valley
+    "IL": "Ohio Valley", "IN": "Ohio Valley", "KY": "Ohio Valley", "MO": "Ohio Valley",
+    "OH": "Ohio Valley", "TN": "Ohio Valley", "WV": "Ohio Valley",
+    # Upper Midwest
+    "IA": "Upper Midwest", "MI": "Upper Midwest", "MN": "Upper Midwest", "WI": "Upper Midwest",
+    # Southeast
+    "AL": "Southeast", "AR": "Southeast", "FL": "Southeast", "GA": "Southeast",
+    "LA": "Southeast", "MS": "Southeast", "NC": "Southeast", "SC": "Southeast",
+    "VA": "Southeast",
+    # Northern Rockies & Plains
+    "ID": "N. Rockies & Plains", "MT": "N. Rockies & Plains", "NE": "N. Rockies & Plains",
+    "ND": "N. Rockies & Plains", "SD": "N. Rockies & Plains", "WY": "N. Rockies & Plains",
+    # Southwest
+    "AZ": "Southwest", "CO": "Southwest", "NM": "Southwest", "UT": "Southwest",
+    # Northwest
+    "OR": "Northwest", "WA": "Northwest",
+    # West
+    "CA": "West", "NV": "West",
+    # South
+    "KS": "South", "OK": "South", "TX": "South",
+    # Non-contiguous / territories
+    "AK": "Alaska", "HI": "Hawaii",
+    "PR": "Caribbean", "VI": "Caribbean", "GU": "Pacific Islands",
+}
+
+
+def _climate_region(state: Optional[str]) -> Optional[str]:
+    if not state:
+        return None
+    return _STATE_CLIMATE_REGION.get(state.upper())
+
+
+# ---------------------------------------------------------------------------
 # Airport metadata fetch
 # ---------------------------------------------------------------------------
 
@@ -179,12 +221,15 @@ def fetch_airport_info(icao: str) -> Optional[dict]:
         return None
 
     rec = data[0]
+    state = rec.get("state") or None
     return {
-        "icao":  icao.upper(),
-        "name":  rec.get("site") or rec.get("name") or icao,
-        "state": rec.get("state") or None,
-        "lat":   rec.get("lat"),
-        "lon":   rec.get("lon"),
+        "icao":           icao.upper(),
+        "name":           rec.get("site") or rec.get("name") or icao,
+        "state":          state,
+        "wfo":            rec.get("wfo") or None,
+        "climate_region": _climate_region(state),
+        "lat":            rec.get("lat"),
+        "lon":            rec.get("lon"),
     }
 
 
@@ -199,17 +244,28 @@ def _upsert_airport(session, icao: str, info: Optional[dict]) -> Airport:
     """
     existing = session.get(Airport, icao.upper())
     if existing:
-        # Backfill state if it wasn't set on initial insert
-        if existing.state is None and info and info.get("state"):
-            existing.state = info["state"]
+        # Backfill any fields that weren't set on initial insert
+        if info:
+            if existing.state is None and info.get("state"):
+                existing.state = info["state"]
+            if existing.wfo is None and info.get("wfo"):
+                existing.wfo = info["wfo"]
+            if existing.climate_region is None and info.get("climate_region"):
+                existing.climate_region = info["climate_region"]
+            elif existing.climate_region is None and existing.state:
+                # Derive from state if not set and wfo lookup failed
+                existing.climate_region = _climate_region(existing.state)
         return existing
 
+    info = info or {}
     ap = Airport(
-        icao =icao.upper(),
-        name =(info or {}).get("name") or icao.upper(),
-        state=(info or {}).get("state"),
-        lat  =(info or {}).get("lat"),
-        lon  =(info or {}).get("lon"),
+        icao           =icao.upper(),
+        name           =info.get("name") or icao.upper(),
+        state          =info.get("state"),
+        wfo            =info.get("wfo"),
+        climate_region =info.get("climate_region"),
+        lat            =info.get("lat"),
+        lon            =info.get("lon"),
     )
     session.add(ap)
     session.flush()

@@ -130,6 +130,8 @@ class LeaderboardEntry(BaseModel):
     icao:                   str
     name:                   Optional[str]
     state:                  Optional[str]
+    wfo:                    Optional[str]
+    climate_region:         Optional[str]
     observation_count:      int
     overall_score:          Optional[float]
     ceiling_coverage_score: Optional[float]
@@ -537,13 +539,15 @@ def airport_snapshot(icao: str):
 
 @app.get("/leaderboard", response_model=list[LeaderboardEntry])
 def leaderboard(
-    sort_by:  str = Query("overall_score",
-                          description="Column to sort by: overall_score | ceiling_score | "
-                                      "visibility_score | wind_speed_score | wind_dir_score"),
-    min_obs:  int = Query(5, ge=1, description="Minimum observations required for inclusion"),
-    limit:    int = Query(1000, ge=1, le=1000),
-    state:    Optional[str] = Query(None, description="Filter by US state abbreviation, e.g. IL"),
-    military: bool = Query(False, description="If true, return only military/joint-use stations"),
+    sort_by:        str = Query("overall_score",
+                               description="Column to sort by: overall_score | ceiling_score | "
+                                           "visibility_score | wind_speed_score | wind_dir_score"),
+    min_obs:        int = Query(5, ge=1, description="Minimum observations required for inclusion"),
+    limit:          int = Query(1000, ge=1, le=1000),
+    state:          Optional[str] = Query(None, description="Filter by US state abbreviation, e.g. IL"),
+    military:       bool = Query(False, description="If true, return only military/joint-use stations"),
+    wfo:            Optional[str] = Query(None, description="Filter by NWS WFO identifier, e.g. LOT"),
+    climate_region: Optional[str] = Query(None, description="Filter by NOAA climate region"),
 ):
     """
     Ranked leaderboard of all airports with sufficient scored observations.
@@ -568,16 +572,22 @@ def leaderboard(
                 Airport.icao,
                 Airport.name,
                 Airport.state,
+                Airport.wfo,
+                Airport.climate_region,
                 *_score_agg_cols(),
             )
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
-            .group_by(Airport.icao, Airport.name, Airport.state)
+            .group_by(Airport.icao, Airport.name, Airport.state, Airport.wfo, Airport.climate_region)
             .having(func.count(ForecastScore.id) >= min_obs)
         )
         if state:
             q = q.filter(Airport.state == state.upper())
         if military:
             q = q.filter(Airport.icao.in_(MILITARY_STATIONS))
+        if wfo:
+            q = q.filter(Airport.wfo == wfo.upper())
+        if climate_region:
+            q = q.filter(Airport.climate_region == climate_region)
         rows = q.order_by(sort_col.desc().nullslast()).limit(limit).all()
 
     return [
@@ -586,6 +596,8 @@ def leaderboard(
             icao                   =r.icao,
             name                   =r.name,
             state                  =r.state,
+            wfo                    =r.wfo,
+            climate_region         =r.climate_region,
             observation_count      =r.cnt,
             overall_score          =_round(r.overall),
             ceiling_coverage_score =_round(r.ceil_cov),
