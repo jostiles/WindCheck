@@ -717,7 +717,8 @@ def score_metar_vs_taf(
     wx_prec, wx_rec = score_weather_phenomena(fc_wx, ob_wx)
 
     # overall: average ceiling_coverage + ceiling_altitude + visibility +
-    # wind_speed + wind_dir + wx (F1-style)
+    # wind_speed + wind_dir.  wx_precision/wx_recall are stored for future
+    # use but intentionally excluded from the overall score.
     wx_component: Optional[float] = None
     if wx_prec is not None and wx_rec is not None:
         denom = wx_prec + wx_rec
@@ -728,7 +729,7 @@ def score_metar_vs_taf(
         wx_component = wx_rec
 
     overall = _overall_score([
-        ceil_cov_score, ceil_alt_score, vis_score, spd_score, dir_score, wx_component
+        ceil_cov_score, ceil_alt_score, vis_score, spd_score, dir_score
     ])
 
     return {
