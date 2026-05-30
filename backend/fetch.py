@@ -487,14 +487,17 @@ def parse_taf_raw(raw: str, ref_dt: Optional[datetime] = None) -> dict:
     # Normalise whitespace; TAFs from ADDS sometimes have embedded newlines
     text = " ".join(raw.split())
 
-    # --- Extract ICAO ---
-    # TAF [AMD|COR] ICAO DDHHMMZ ...
+    # --- Extract ICAO and amendment/correction flags ---
+    # TAF [AMD|COR|RTD] ICAO DDHHMMZ ...
     header_m = re.match(
         r'^TAF(?:\s+(?:AMD|COR|RTD))*\s+([A-Z]{4})\s+', text
     )
     if not header_m:
         raise ValueError(f"Cannot find ICAO in TAF: {text[:80]}")
-    icao = header_m.group(1)
+    icao         = header_m.group(1)
+    header_upper = text[:header_m.end()].upper()
+    is_amendment = "AMD" in header_upper
+    is_correction = "COR" in header_upper
 
     # --- Extract issue time (DDHHMMZ) ---
     issue_m = _ISSUE_RE.search(text, header_m.end())
@@ -552,12 +555,14 @@ def parse_taf_raw(raw: str, ref_dt: Optional[datetime] = None) -> dict:
             logger.warning("Skipping TAF group %r at seq %d: %s", label, seq, exc)
 
     return {
-        "icao":       icao,
-        "issue_time": issue_iso,
-        "valid_from": valid_from.isoformat(),
-        "valid_to":   valid_to.isoformat(),
-        "raw_text":   raw,
-        "periods":    periods,
+        "icao":          icao,
+        "issue_time":    issue_iso,
+        "valid_from":    valid_from.isoformat(),
+        "valid_to":      valid_to.isoformat(),
+        "raw_text":      raw,
+        "is_amendment":  is_amendment,
+        "is_correction": is_correction,
+        "periods":       periods,
     }
 
 

@@ -85,7 +85,7 @@ if (loading) return (
     </div>
   )
 
-  const { name, lat, lon, summary } = airport
+  const { name, lat, lon, summary, amendments } = airport
 
   return (
     <div>
@@ -114,6 +114,9 @@ if (loading) return (
       <div className="section-title">Accuracy summary</div>
       <MetricsGrid summary={summary} />
 
+      {/* Amendment stats */}
+      {airport.amendments && <AmendmentStats data={airport.amendments} />}
+
       {/* By-hour accuracy chart */}
       <div className="section-title">Accuracy by forecast-hour offset</div>
       {byHour.length > 0
@@ -126,6 +129,65 @@ if (loading) return (
 
       {/* Recent observations table */}
       <RecentTable rows={recent} />
+    </div>
+  )
+}
+
+// ── Amendment stats ───────────────────────────────────────────────────────
+
+function AmendmentStats({ data }) {
+  const { total_tafs, amendment_count, correction_count, amendment_pct, original_score, amendment_score } = data
+  if (total_tafs === 0) return null
+
+  function pct(v) { return v != null ? `${Math.round(v * 100)}%` : '—' }
+  function scoreColor(v) {
+    if (v == null) return 'var(--muted)'
+    return v >= 0.8 ? '#22c55e' : v >= 0.6 ? '#f59e0b' : '#ef4444'
+  }
+
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px', marginBottom: 24 }}>
+      <div className="section-title" style={{ marginBottom: 12 }}>TAF amendment breakdown</div>
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Total TAFs scored</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)' }}>{total_tafs.toLocaleString()}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Amendments (AMD)</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)' }}>
+            {amendment_count} <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)' }}>{amendment_pct}%</span>
+          </div>
+        </div>
+        {correction_count > 0 && (
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Corrections (COR)</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)' }}>{correction_count}</div>
+          </div>
+        )}
+        <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 24, marginLeft: 8 }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Avg overall score by TAF type</div>
+          <div style={{ display: 'flex', gap: 20 }}>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>Original</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: scoreColor(original_score) }}>{pct(original_score)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>Amendment</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: scoreColor(amendment_score) }}>{pct(amendment_score)}</div>
+            </div>
+          </div>
+          {original_score != null && amendment_score != null && (
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>
+              Amendments score {amendment_score > original_score
+                ? <span style={{ color: '#22c55e' }}>+{Math.round((amendment_score - original_score) * 100)} pts better</span>
+                : amendment_score < original_score
+                ? <span style={{ color: '#ef4444' }}>{Math.round((amendment_score - original_score) * 100)} pts worse</span>
+                : <span>the same</span>} than originals
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

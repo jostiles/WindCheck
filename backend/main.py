@@ -92,12 +92,22 @@ class ScoreSummary(BaseModel):
     wx_recall:              Optional[float]
 
 
+class AmendmentStats(BaseModel):
+    total_tafs:        int
+    amendment_count:   int
+    correction_count:  int
+    amendment_pct:     float  # % of TAFs that were amendments
+    original_score:    Optional[float]   # avg overall score for original TAFs
+    amendment_score:   Optional[float]   # avg overall score for amended TAFs
+
+
 class AirportDetail(BaseModel):
-    icao:    str
-    name:    Optional[str]
-    lat:     Optional[float]
-    lon:     Optional[float]
-    summary: ScoreSummary
+    icao:       str
+    name:       Optional[str]
+    lat:        Optional[float]
+    lon:        Optional[float]
+    summary:    ScoreSummary
+    amendments: AmendmentStats
 
 
 class HourBucket(BaseModel):
@@ -271,8 +281,6 @@ def airport_detail(icao: str):
     icao = icao.upper()
     with get_session() as session:
         ap = session.get(Airport, icao)
-        # Read scalar values inside the session so the ORM object
-        # doesn't become detached before we access its attributes.
         ap_name = ap.name if ap else None
         ap_lat  = ap.lat  if ap else None
         ap_lon  = ap.lon  if ap else None
@@ -283,15 +291,43 @@ def airport_detail(icao: str):
             .one()
         )
 
+        # Amendment stats: count TAFs and compare scores by type
+        amd_rows = session.execute(text("""
+            SELECT
+                COUNT(*)                                                          AS total,
+                SUM(t.is_amendment)                                               AS amd_count,
+                SUM(t.is_correction)                                              AS cor_count,
+                AVG(CASE WHEN t.is_amendment = 0 AND t.is_correction = 0
+                         THEN fs.overall_score END)                               AS orig_score,
+                AVG(CASE WHEN t.is_amendment = 1
+                         THEN fs.overall_score END)                               AS amd_score
+            FROM forecast_scores fs
+            JOIN tafs t ON fs.taf_id = t.id
+            WHERE fs.airport_icao = :icao
+        """), {"icao": icao}).fetchone()
+
     if not ap and (agg is None or agg.cnt == 0):
         raise HTTPException(404, f"Airport {icao} not found or has no scored observations")
 
+    total       = amd_rows.total or 0
+    amd_count   = int(amd_rows.amd_count or 0)
+    cor_count   = int(amd_rows.cor_count or 0)
+    amd_pct     = round(amd_count / total * 100, 1) if total else 0.0
+
     return AirportDetail(
-        icao   =icao,
-        name   =ap_name,
-        lat    =ap_lat,
-        lon    =ap_lon,
-        summary=_summary_from_rows(agg),
+        icao      =icao,
+        name      =ap_name,
+        lat       =ap_lat,
+        lon       =ap_lon,
+        summary   =_summary_from_rows(agg),
+        amendments=AmendmentStats(
+            total_tafs       =total,
+            amendment_count  =amd_count,
+            correction_count =cor_count,
+            amendment_pct    =amd_pct,
+            original_score   =_round(amd_rows.orig_score),
+            amendment_score  =_round(amd_rows.amd_score),
+        ),
     )
 
 

@@ -72,12 +72,14 @@ class TAF(Base):
 
     __tablename__ = "tafs"
 
-    id           = Column(Integer, primary_key=True, autoincrement=True)
-    airport_icao = Column(String(4), ForeignKey("airports.icao"), nullable=False)
-    issue_time   = Column(String,    nullable=False)  # stored as ISO-8601 string
-    valid_from   = Column(String,    nullable=False)  # ISO-8601
-    valid_to     = Column(String,    nullable=False)  # ISO-8601
-    raw_text     = Column(Text,      nullable=False)
+    id             = Column(Integer, primary_key=True, autoincrement=True)
+    airport_icao   = Column(String(4), ForeignKey("airports.icao"), nullable=False)
+    issue_time     = Column(String,    nullable=False)  # stored as ISO-8601 string
+    valid_from     = Column(String,    nullable=False)  # ISO-8601
+    valid_to       = Column(String,    nullable=False)  # ISO-8601
+    raw_text       = Column(Text,      nullable=False)
+    is_amendment   = Column(Integer,   default=0)  # 1 if TAF AMD
+    is_correction  = Column(Integer,   default=0)  # 1 if TAF COR
 
     airport = relationship("Airport",    back_populates="tafs")
     periods = relationship("TAFPeriod",  back_populates="taf",

@@ -311,11 +311,13 @@ def _upsert_taf(session, taf_data: dict) -> tuple[int, bool]:
         return existing.id, False
 
     taf_obj = TAF(
-        airport_icao=icao,
-        issue_time  =issue_time,
-        valid_from  =taf_data["valid_from"],
-        valid_to    =taf_data["valid_to"],
-        raw_text    =taf_data["raw_text"],
+        airport_icao  =icao,
+        issue_time    =issue_time,
+        valid_from    =taf_data["valid_from"],
+        valid_to      =taf_data["valid_to"],
+        raw_text      =taf_data["raw_text"],
+        is_amendment  =1 if taf_data.get("is_amendment")  else 0,
+        is_correction =1 if taf_data.get("is_correction") else 0,
     )
     session.add(taf_obj)
     session.flush()  # populate taf_obj.id

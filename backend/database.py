@@ -80,6 +80,8 @@ def _migrate_schema() -> None:
         ("airports",        "state",                    "TEXT"),
         ("airports",        "wfo",                      "TEXT"),
         ("airports",        "climate_region",            "TEXT"),
+        ("tafs",            "is_amendment",              "INTEGER DEFAULT 0"),
+        ("tafs",            "is_correction",             "INTEGER DEFAULT 0"),
     ]
     with _engine.connect() as conn:
         for table, column, col_type in migrations:
