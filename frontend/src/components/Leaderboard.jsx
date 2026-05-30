@@ -100,20 +100,10 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
       if (sortKey === 'overall') {
         va = weightedScore(a, weights) ?? -1
         vb = weightedScore(b, weights) ?? -1
-      } else if (sortKey === 'region') {
-        va = a.climate_region ?? ''
-        vb = b.climate_region ?? ''
-      } else if (sortKey === 'wfo') {
-        va = a.wfo ?? ''
-        vb = b.wfo ?? ''
-      } else if (sortKey === 'military') {
-        va = a.is_military ? 1 : 0
-        vb = b.is_military ? 1 : 0
       } else {
         va = a[sortKey] ?? -1
         vb = b[sortKey] ?? -1
       }
-      if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va)
       return sortAsc ? va - vb : vb - va
     })
   }, [rows, weights, sortAsc, sortKey])
@@ -210,23 +200,9 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                     <th>#</th>
                     <th>Airport</th>
                     <th>State</th>
-                    {[
-                      { key: 'region',   label: 'Region'  },
-                      { key: 'wfo',      label: 'WFO'     },
-                      { key: 'military', label: 'Mil'     },
-                    ].map(col => (
-                      <th
-                        key={col.key}
-                        className="sortable"
-                        style={{ cursor: 'pointer', userSelect: 'none', color: sortKey === col.key ? 'var(--accent2)' : '' }}
-                        onClick={() => handleColSort(col.key)}
-                      >
-                        {col.label}
-                        <span className="sort-arrow" style={{ fontSize: 10 }}>
-                          {sortKey === col.key ? (sortAsc ? ' ▲' : ' ▼') : ' ·'}
-                        </span>
-                      </th>
-                    ))}
+                    <th>Region</th>
+                    <th>WFO</th>
+                    <th>Mil</th>
                     <th>Obs</th>
                     {[{ key: 'overall', label: 'Overall' }, ...PARAM_COLS].map(col => (
                       <th
