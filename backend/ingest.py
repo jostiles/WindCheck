@@ -197,11 +197,28 @@ def _climate_region(state: Optional[str]) -> Optional[str]:
 # Airport metadata fetch
 # ---------------------------------------------------------------------------
 
+def _fetch_wfo(lat: Optional[float], lon: Optional[float]) -> Optional[str]:
+    """
+    Look up the NWS Weather Forecast Office responsible for a lat/lon point.
+    Uses api.weather.gov/points — returns None on error or non-US locations.
+    """
+    if lat is None or lon is None:
+        return None
+    try:
+        with httpx.Client(timeout=10, headers={"User-Agent": "windcheck-app/1.0"}) as client:
+            resp = client.get(f"https://api.weather.gov/points/{lat:.4f},{lon:.4f}")
+            if resp.status_code == 200:
+                return resp.json().get("properties", {}).get("cwa") or None
+    except Exception:
+        pass
+    return None
+
+
 def fetch_airport_info(icao: str) -> Optional[dict]:
     """
-    Retrieve airport metadata (name, lat, lon) from aviationweather.gov.
+    Retrieve airport metadata from aviationweather.gov, plus WFO from api.weather.gov.
 
-    Returns a dict with keys: icao, name, lat, lon.
+    Returns a dict with keys: icao, name, state, wfo, climate_region, lat, lon.
     Returns None on error (the airport row will still be created with
     stub values so FK constraints are satisfied).
     """
@@ -222,14 +239,17 @@ def fetch_airport_info(icao: str) -> Optional[dict]:
 
     rec = data[0]
     state = rec.get("state") or None
+    lat   = rec.get("lat")
+    lon   = rec.get("lon")
+    wfo   = _fetch_wfo(lat, lon)
     return {
         "icao":           icao.upper(),
         "name":           rec.get("site") or rec.get("name") or icao,
         "state":          state,
-        "wfo":            rec.get("wfo") or None,
+        "wfo":            wfo,
         "climate_region": _climate_region(state),
-        "lat":            rec.get("lat"),
-        "lon":            rec.get("lon"),
+        "lat":            lat,
+        "lon":            lon,
     }
 
 
