@@ -199,7 +199,6 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                   <tr>
                     <th>#</th>
                     <th>Airport</th>
-                    <th>State</th>
                     <th title="NOAA Climate Region — one of 9 geographic groupings defined by the National Centers for Environmental Information (ncei.noaa.gov) based on climate similarity. Derived from the airport's state.">Region ⓘ</th>
                     <th title="Weather Forecast Office — the NWS office responsible for issuing TAFs at this location. Sourced from api.weather.gov/points using the airport's lat/lon.">WFO ⓘ</th>
                     <th>Mil</th>
@@ -220,7 +219,7 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                   </tr>
                   {/* Weight sliders */}
                   <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    <th colSpan={7} style={{ padding: '6px 14px', fontWeight: 400, fontSize: 11, color: 'var(--muted)', textAlign: 'left', textTransform: 'none', letterSpacing: 0 }}>
+                    <th colSpan={6} style={{ padding: '6px 14px', fontWeight: 400, fontSize: 11, color: 'var(--muted)', textAlign: 'left', textTransform: 'none', letterSpacing: 0 }}>
                       Weights
                     </th>
                     <th style={{ padding: '6px 14px' }} />
@@ -265,11 +264,10 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                           </div>
                           {r.name && (
                             <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
-                              {r.name.trim()}
+                              {r.name.trim()}{r.state ? `, ${r.state}` : ''}
                             </div>
                           )}
                         </td>
-                        <td style={{ color: 'var(--muted)' }}>{r.state ?? '—'}</td>
                         <td style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{r.climate_region ?? '—'}</td>
                         <td style={{ fontSize: 11, color: 'var(--muted)' }}>{r.wfo ?? '—'}</td>
                         <td style={{ textAlign: 'center' }}>
