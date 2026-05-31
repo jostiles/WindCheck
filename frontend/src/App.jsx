@@ -331,13 +331,13 @@ export default function App() {
         <button
           className={`tab ${tab === 'analytics' ? 'active' : ''}`}
           onClick={() => setTab('analytics')}
-          style={{ marginLeft: 'auto' }}
         >
           The real nerdy stuff
         </button>
         <button
           className={`tab ${tab === 'welcome' ? 'active' : ''}`}
           onClick={() => setTab('welcome')}
+          style={{ marginLeft: 'auto' }}
         >
           What site did Jordan just send me?
         </button>
