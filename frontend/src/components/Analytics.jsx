@@ -115,15 +115,14 @@ function RegionScoreChart({ airports }) {
 
 function ScoreHistogram({ airports }) {
   const data = useMemo(() => {
-    // 5-point buckets: 0-4%, 5-9%, … 95-99%, 100%
-    const buckets = Array.from({ length: 21 }, (_, i) => ({
-      label: i === 20 ? '100%' : `${i * 5}%`,
-      score: i * 5,
+    const buckets = Array.from({ length: 101 }, (_, i) => ({
+      label: `${i}%`,
+      score: i,
       count: 0,
     }))
     for (const ap of airports) {
       if (ap.overall_score == null) continue
-      const idx = Math.min(20, Math.floor(ap.overall_score * 100 / 5))
+      const idx = Math.min(100, Math.round(ap.overall_score * 100))
       buckets[idx].count++
     }
     return buckets
@@ -140,7 +139,7 @@ function ScoreHistogram({ airports }) {
     const d = payload[0]?.payload
     return (
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.7 }}>
-        <div style={{ fontWeight: 700 }}>{d.score}–{Math.min(d.score + 4, 100)}%</div>
+        <div style={{ fontWeight: 700 }}>{d.score}%</div>
         <div style={{ color: 'var(--muted)' }}>{d.count} airport{d.count !== 1 ? 's' : ''}</div>
       </div>
     )
@@ -159,7 +158,7 @@ function ScoreHistogram({ airports }) {
             tick={{ fill: 'var(--muted)', fontSize: 10 }}
             tickLine={false}
             axisLine={{ stroke: 'var(--border)' }}
-            interval={1}
+            interval={9}
           />
           <YAxis
             allowDecimals={false}
