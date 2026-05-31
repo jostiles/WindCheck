@@ -245,10 +245,7 @@ const DUMMY_REGIONS = REGIONS_ORDER.slice(1)
 function ObsHistogram({ airports }) {
   const data = useMemo(() => {
     if (!airports.length) return []
-    const max = Math.max(...airports.map(a => a.observation_count))
-    // Pick bucket size so we get ~30 bars
-    const raw = Math.ceil(max / 30)
-    const size = [1,2,5,10,20,25,50,100,200,250,500].find(s => s >= raw) ?? raw
+    const size = 5
     const buckets = {}
     for (const ap of airports) {
       const b = Math.floor(ap.observation_count / size) * size
