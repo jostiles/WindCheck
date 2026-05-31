@@ -242,6 +242,65 @@ const REGIONS_ORDER = [
 // baseline region = 'Northeast' (omitted for dummy coding)
 const DUMMY_REGIONS = REGIONS_ORDER.slice(1)
 
+function ObsHistogram({ airports }) {
+  const data = useMemo(() => {
+    if (!airports.length) return []
+    const max = Math.max(...airports.map(a => a.observation_count))
+    // Pick bucket size so we get ~30 bars
+    const raw = Math.ceil(max / 30)
+    const size = [1,2,5,10,20,25,50,100,200,250,500].find(s => s >= raw) ?? raw
+    const buckets = {}
+    for (const ap of airports) {
+      const b = Math.floor(ap.observation_count / size) * size
+      buckets[b] = (buckets[b] ?? 0) + 1
+    }
+    return Object.entries(buckets)
+      .map(([b, count]) => ({ bucket: Number(b), label: `${b}`, count }))
+      .sort((a, b) => a.bucket - b.bucket)
+  }, [airports])
+
+  function ObsTooltip({ active, payload }) {
+    if (!active || !payload?.length) return null
+    const d = payload[0]?.payload
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.7 }}>
+        <div style={{ fontWeight: 700 }}>{d.bucket}+ observations</div>
+        <div style={{ color: 'var(--muted)' }}>{d.count} airport{d.count !== 1 ? 's' : ''}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div className="section-title">Observation count distribution</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
+        How many airports have each number of scored observations.
+      </div>
+      <ResponsiveContainer width="100%" height={320}>
+        <BarChart data={data} margin={{ top: 10, right: 20, bottom: 20, left: 0 }}>
+          <XAxis
+            dataKey="label"
+            tick={{ fill: 'var(--muted)', fontSize: 10 }}
+            tickLine={false}
+            axisLine={{ stroke: 'var(--border)' }}
+            interval="preserveStartEnd"
+            label={{ value: 'Observations', position: 'insideBottom', offset: -10, fill: 'var(--muted)', fontSize: 11 }}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            label={{ value: 'Airports', angle: -90, position: 'insideLeft', fill: 'var(--muted)', fontSize: 11 }}
+          />
+          <Tooltip content={<ObsTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+          <Bar dataKey="count" fill="#60a5fa" radius={[3, 3, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 function RegressionTable({ airports }) {
   const result = useMemo(() => {
     const rows = airports.filter(ap =>
@@ -380,6 +439,7 @@ export default function Analytics({ onSelectAirport }) {
 
       <RegionScoreChart airports={airports} />
       <ScoreHistogram airports={airports} />
+      <ObsHistogram airports={airports} />
       <RegressionTable airports={airports} />
     </div>
   )
