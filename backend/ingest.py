@@ -266,6 +266,12 @@ def _upsert_airport(session, icao: str, info: Optional[dict]) -> Airport:
     if existing:
         # Backfill any fields that weren't set on initial insert
         if info:
+            if (existing.name is None or existing.name == icao.upper()) and info.get("name"):
+                existing.name = info["name"]
+            if existing.lat is None and info.get("lat") is not None:
+                existing.lat = info["lat"]
+            if existing.lon is None and info.get("lon") is not None:
+                existing.lon = info["lon"]
             if existing.state is None and info.get("state"):
                 existing.state = info["state"]
             if existing.wfo is None and info.get("wfo"):
