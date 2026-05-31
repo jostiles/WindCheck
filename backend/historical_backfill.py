@@ -48,7 +48,7 @@ REQUEST_TIMEOUT  = 120  # seconds
 
 # Semaphore limiting concurrent Mesonet HTTP requests regardless of worker count.
 # Keeps network concurrency low to avoid 429s while still parallelising DB writes.
-_fetch_sem = threading.Semaphore(3)
+_fetch_sem = threading.Semaphore(2)
 
 
 # ---------------------------------------------------------------------------
@@ -548,7 +548,7 @@ def main() -> int:
 
     total = len(stations)
     print(f"Stations   : {total}")
-    print(f"Workers    : {args.workers} (network semaphore: 3)\n")
+    print(f"Workers    : {args.workers} (network semaphore: 2)\n")
 
     t_start = time.monotonic()
     done = failed = 0
