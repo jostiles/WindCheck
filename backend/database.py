@@ -47,6 +47,7 @@ def _make_engine(db_path: Path = DB_PATH):
     def _set_wal(dbapi_conn, _rec):
         dbapi_conn.execute("PRAGMA journal_mode=WAL")
         dbapi_conn.execute("PRAGMA foreign_keys=ON")
+        dbapi_conn.execute("PRAGMA busy_timeout=30000")  # wait up to 30s for locks
 
     return engine
 
