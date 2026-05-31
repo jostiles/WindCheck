@@ -179,6 +179,176 @@ function ScoreHistogram({ airports }) {
   )
 }
 
+// ── OLS regression helpers ────────────────────────────────────────────────
+// Implements β = (X'X)⁻¹ X'y via Gaussian elimination (no external library).
+
+function matMul(A, B) {
+  const rows = A.length, cols = B[0].length, inner = B.length
+  return Array.from({ length: rows }, (_, i) =>
+    Array.from({ length: cols }, (_, j) =>
+      Array.from({ length: inner }, (_, k) => A[i][k] * B[k][j])
+        .reduce((s, v) => s + v, 0)
+    )
+  )
+}
+
+function matT(A) {
+  return A[0].map((_, j) => A.map(row => row[j]))
+}
+
+function matInv(M) {
+  const n = M.length
+  const aug = M.map((row, i) => [...row, ...Array.from({ length: n }, (_, j) => i === j ? 1 : 0)])
+  for (let col = 0; col < n; col++) {
+    let pivot = col
+    for (let row = col + 1; row < n; row++)
+      if (Math.abs(aug[row][col]) > Math.abs(aug[pivot][col])) pivot = row;
+    [aug[col], aug[pivot]] = [aug[pivot], aug[col]]
+    const d = aug[col][col]
+    if (Math.abs(d) < 1e-12) return null
+    aug[col] = aug[col].map(v => v / d)
+    for (let row = 0; row < n; row++) {
+      if (row === col) continue
+      const f = aug[row][col]
+      aug[row] = aug[row].map((v, k) => v - f * aug[col][k])
+    }
+  }
+  return aug.map(row => row.slice(n))
+}
+
+function ols(X, y) {
+  const Xt  = matT(X)
+  const XtX = matMul(Xt, X)
+  const inv = matInv(XtX)
+  if (!inv) return null
+  const Xty = matMul(Xt, y.map(v => [v]))
+  const beta = matMul(inv, Xty).map(r => r[0])
+
+  // R²
+  const yMean = y.reduce((s, v) => s + v, 0) / y.length
+  const yHat  = X.map(row => row.reduce((s, x, i) => s + x * beta[i], 0))
+  const ssTot = y.reduce((s, v) => s + (v - yMean) ** 2, 0)
+  const ssRes = y.reduce((s, v, i) => s + (v - yHat[i]) ** 2, 0)
+  const r2    = ssTot > 0 ? 1 - ssRes / ssTot : 0
+
+  return { beta, r2 }
+}
+
+const REGIONS_ORDER = [
+  'Northeast', 'Ohio Valley', 'Upper Midwest', 'Southeast',
+  'N. Rockies & Plains', 'Southwest', 'Northwest', 'West',
+  'South', 'Alaska', 'Hawaii', 'Caribbean', 'Pacific Islands',
+]
+// baseline region = 'Northeast' (omitted for dummy coding)
+const DUMMY_REGIONS = REGIONS_ORDER.slice(1)
+
+function RegressionTable({ airports }) {
+  const result = useMemo(() => {
+    const rows = airports.filter(ap =>
+      ap.overall_score != null &&
+      ap.lat != null && ap.lon != null &&
+      ap.amendment_pct != null
+    )
+    if (rows.length < 10) return null
+
+    // Mean-center continuous variables for interpretability
+    const meanLat = rows.reduce((s, r) => s + r.lat, 0) / rows.length
+    const meanLon = rows.reduce((s, r) => s + r.lon, 0) / rows.length
+    const meanAmd = rows.reduce((s, r) => s + r.amendment_pct, 0) / rows.length
+
+    const X = rows.map(r => [
+      1,                                                    // intercept
+      r.lat - meanLat,                                      // latitude (centered)
+      r.lon - meanLon,                                      // longitude (centered)
+      r.amendment_pct - meanAmd,                            // amendment rate (centered)
+      r.is_military ? 1 : 0,                                // military (binary)
+      ...DUMMY_REGIONS.map(reg => r.climate_region === reg ? 1 : 0), // region dummies
+    ])
+    const y = rows.map(r => r.overall_score * 100)         // score in %
+
+    const fit = ols(X, y)
+    if (!fit) return null
+
+    const labels = [
+      'Intercept',
+      'Latitude (per °N)',
+      'Longitude (per °E)',
+      'Amendment rate (per 1%)',
+      'Military airport',
+      ...DUMMY_REGIONS.map(r => `Region: ${r}`),
+    ]
+
+    return {
+      n: rows.length,
+      r2: fit.r2,
+      meanLat, meanLon, meanAmd,
+      coefficients: labels.map((label, i) => ({ label, beta: fit.beta[i] })),
+    }
+  }, [airports])
+
+  if (!result) return (
+    <div className="state-box" style={{ padding: '32px 24px' }}>
+      <p>Not enough data for regression.</p>
+    </div>
+  )
+
+  const { n, r2, coefficients } = result
+  const maxAbs = Math.max(...coefficients.slice(1).map(c => Math.abs(c.beta)))
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div className="section-title">Multiple linear regression: predictors of overall score</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>
+        OLS regression with <strong style={{ color: 'var(--text)' }}>overall score (0–100%)</strong> as the outcome.
+        Continuous variables are mean-centered. Region baseline = Northeast.
+        n = {n} airports.
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
+        R² = <strong style={{ color: 'var(--text)' }}>{(r2 * 100).toFixed(1)}%</strong> of variance explained.
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+              <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--muted)', fontWeight: 600 }}>Predictor</th>
+              <th style={{ textAlign: 'right', padding: '6px 12px', color: 'var(--muted)', fontWeight: 600 }}>Coefficient (pp)</th>
+              <th style={{ padding: '6px 12px', color: 'var(--muted)', fontWeight: 600, width: 200 }}>Effect size</th>
+            </tr>
+          </thead>
+          <tbody>
+            {coefficients.map(({ label, beta }, i) => {
+              const isIntercept = i === 0
+              const barWidth = isIntercept ? 0 : Math.round((Math.abs(beta) / maxAbs) * 100)
+              const barColor = beta >= 0 ? '#22c55e' : '#ef4444'
+              return (
+                <tr key={label} style={{ borderBottom: '1px solid var(--border)', opacity: isIntercept ? 0.5 : 1 }}>
+                  <td style={{ padding: '7px 12px', color: 'var(--text)' }}>{label}</td>
+                  <td style={{ padding: '7px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: isIntercept ? 'var(--muted)' : beta >= 0 ? '#22c55e' : '#ef4444', fontWeight: isIntercept ? 400 : 600 }}>
+                    {beta >= 0 && !isIntercept ? '+' : ''}{beta.toFixed(2)}
+                  </td>
+                  <td style={{ padding: '7px 12px' }}>
+                    {!isIntercept && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ flex: 1, height: 8, background: 'var(--surface2)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ width: `${barWidth}%`, height: '100%', background: barColor, borderRadius: 4 }} />
+                        </div>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
+        Coefficients are in percentage points. E.g. +2.5 means that factor is associated with a 2.5 pp higher score, holding all others constant.
+      </div>
+    </div>
+  )
+}
+
 export default function Analytics({ onSelectAirport }) {
   const [airports, setAirports] = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -210,6 +380,7 @@ export default function Analytics({ onSelectAirport }) {
 
       <RegionScoreChart airports={airports} />
       <ScoreHistogram airports={airports} />
+      <RegressionTable airports={airports} />
     </div>
   )
 }

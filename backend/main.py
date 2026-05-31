@@ -26,7 +26,7 @@ from typing import Optional
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlalchemy import func, text
+from sqlalchemy import Float, cast, func, text
 
 from database import get_session, init_db
 from ingest import process_station, US_TAF_STATIONS, MILITARY_STATIONS, _taf_orm_to_dict, _metar_orm_to_dict
@@ -152,6 +152,7 @@ class LeaderboardEntry(BaseModel):
     visibility_score:       Optional[float]
     wind_speed_score:       Optional[float]
     wind_dir_score:         Optional[float]
+    amendment_pct:          Optional[float]
 
 
 class IngestResponse(BaseModel):
@@ -606,6 +607,16 @@ def leaderboard(
     sort_col = _sort_map.get(sort_by, _sort_map["overall_score"])
 
     with get_session() as session:
+        # Subquery: amendment rate per airport
+        amd_sub = (
+            session.query(
+                TAF.airport_icao.label("icao"),
+                func.avg(cast(TAF.is_amendment, Float)).label("amd_pct"),
+            )
+            .group_by(TAF.airport_icao)
+            .subquery()
+        )
+
         q = (
             session.query(
                 Airport.icao,
@@ -615,10 +626,12 @@ def leaderboard(
                 Airport.climate_region,
                 Airport.lat,
                 Airport.lon,
+                amd_sub.c.amd_pct,
                 *_score_agg_cols(),
             )
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
-            .group_by(Airport.icao, Airport.name, Airport.state, Airport.wfo, Airport.climate_region, Airport.lat, Airport.lon)
+            .outerjoin(amd_sub, Airport.icao == amd_sub.c.icao)
+            .group_by(Airport.icao, Airport.name, Airport.state, Airport.wfo, Airport.climate_region, Airport.lat, Airport.lon, amd_sub.c.amd_pct)
             .having(func.count(ForecastScore.id) >= min_obs)
         )
         if state:
@@ -649,6 +662,7 @@ def leaderboard(
             visibility_score       =_round(r.visibility),
             wind_speed_score       =_round(r.wind_speed),
             wind_dir_score         =_round(r.wind_dir),
+            amendment_pct          =_round(r.amd_pct),
         )
         for i, r in enumerate(rows)
     ]
