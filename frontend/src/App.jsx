@@ -10,6 +10,7 @@ import Welcome             from './components/Welcome'
 import TailEndCharlie      from './components/TailEndCharlie'
 import SnapshotComparison  from './components/SnapshotComparison'
 import MapView             from './components/MapView'
+import Analytics           from './components/Analytics'
 
 const DEFAULT_WEIGHTS = {
   ceiling_coverage_score: 1,
@@ -328,9 +329,15 @@ export default function App() {
           </button>
         ))}
         <button
+          className={`tab ${tab === 'analytics' ? 'active' : ''}`}
+          onClick={() => setTab('analytics')}
+          style={{ marginLeft: 'auto' }}
+        >
+          The real nerdy stuff
+        </button>
+        <button
           className={`tab ${tab === 'welcome' ? 'active' : ''}`}
           onClick={() => setTab('welcome')}
-          style={{ marginLeft: 'auto' }}
         >
           What site did Jordan just send me?
         </button>
@@ -350,7 +357,9 @@ export default function App() {
 
       {/* ── Content ── */}
       <main className="main-content">
-        {tab === 'welcome'
+        {tab === 'analytics'
+          ? <Analytics onSelectAirport={openAirport} />
+          : tab === 'welcome'
           ? <Welcome />
           : tab === 'about'
           ? <About />
