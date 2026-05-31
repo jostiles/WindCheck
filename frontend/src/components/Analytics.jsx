@@ -113,6 +113,73 @@ function RegionScoreChart({ airports }) {
   )
 }
 
+function ScoreHistogram({ airports }) {
+  const data = useMemo(() => {
+    // 5-point buckets: 0-4%, 5-9%, … 95-99%, 100%
+    const buckets = Array.from({ length: 21 }, (_, i) => ({
+      label: i === 20 ? '100%' : `${i * 5}%`,
+      score: i * 5,
+      count: 0,
+    }))
+    for (const ap of airports) {
+      if (ap.overall_score == null) continue
+      const idx = Math.min(20, Math.floor(ap.overall_score * 100 / 5))
+      buckets[idx].count++
+    }
+    return buckets
+  }, [airports])
+
+  function bucketColor(score) {
+    if (score >= 80) return '#22c55e'
+    if (score >= 60) return '#f59e0b'
+    return '#ef4444'
+  }
+
+  function HistTooltip({ active, payload }) {
+    if (!active || !payload?.length) return null
+    const d = payload[0]?.payload
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.7 }}>
+        <div style={{ fontWeight: 700 }}>{d.score}–{Math.min(d.score + 4, 100)}%</div>
+        <div style={{ color: 'var(--muted)' }}>{d.count} airport{d.count !== 1 ? 's' : ''}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div className="section-title">Score distribution across all airports</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
+        How many airports fall into each 5-point score bucket.
+      </div>
+      <ResponsiveContainer width="100%" height={320}>
+        <BarChart data={data} margin={{ top: 10, right: 20, bottom: 20, left: 0 }}>
+          <XAxis
+            dataKey="label"
+            tick={{ fill: 'var(--muted)', fontSize: 10 }}
+            tickLine={false}
+            axisLine={{ stroke: 'var(--border)' }}
+            interval={1}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            label={{ value: 'Airports', angle: -90, position: 'insideLeft', fill: 'var(--muted)', fontSize: 11 }}
+          />
+          <Tooltip content={<HistTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+          <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+            {data.map(d => (
+              <Cell key={d.score} fill={bucketColor(d.score)} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 export default function Analytics({ onSelectAirport }) {
   const [airports, setAirports] = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -143,6 +210,7 @@ export default function Analytics({ onSelectAirport }) {
       </div>
 
       <RegionScoreChart airports={airports} />
+      <ScoreHistogram airports={airports} />
     </div>
   )
 }
