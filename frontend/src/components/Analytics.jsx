@@ -249,20 +249,27 @@ function ObsHistogram({ airports }) {
     const buckets = {}
     for (const ap of airports) {
       const b = Math.floor(ap.observation_count / size) * size
-      buckets[b] = (buckets[b] ?? 0) + 1
+      if (!buckets[b]) buckets[b] = { civilian: 0, military: 0 }
+      if (ap.is_military) buckets[b].military++
+      else buckets[b].civilian++
     }
     return Object.entries(buckets)
-      .map(([b, count]) => ({ bucket: Number(b), label: `${b}`, count }))
+      .map(([b, { civilian, military }]) => ({
+        bucket: Number(b), label: `${b}`, civilian, military,
+      }))
       .sort((a, b) => a.bucket - b.bucket)
   }, [airports])
 
   function ObsTooltip({ active, payload }) {
     if (!active || !payload?.length) return null
     const d = payload[0]?.payload
+    const total = d.civilian + d.military
     return (
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.7 }}>
-        <div style={{ fontWeight: 700 }}>{d.bucket}+ observations</div>
-        <div style={{ color: 'var(--muted)' }}>{d.count} airport{d.count !== 1 ? 's' : ''}</div>
+        <div style={{ fontWeight: 700 }}>{d.bucket}–{d.bucket + 4} observations</div>
+        <div style={{ color: '#60a5fa' }}>Civilian: {d.civilian}</div>
+        {d.military > 0 && <div style={{ color: '#fbbf24' }}>Military: {d.military}</div>}
+        <div style={{ color: 'var(--muted)' }}>Total: {total}</div>
       </div>
     )
   }
@@ -270,11 +277,17 @@ function ObsHistogram({ airports }) {
   return (
     <div style={{ marginTop: 40 }}>
       <div className="section-title">Observation count distribution</div>
-      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
-        How many airports have each number of scored observations.
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
+        <span>How many airports have each number of scored observations.</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 10, height: 10, borderRadius: 2, background: '#60a5fa', display: 'inline-block' }} /> Civilian
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 10, height: 10, borderRadius: 2, background: '#fbbf24', display: 'inline-block' }} /> Military
+        </span>
       </div>
       <ResponsiveContainer width="100%" height={320}>
-        <BarChart data={data} margin={{ top: 10, right: 20, bottom: 20, left: 0 }}>
+        <BarChart data={data} margin={{ top: 10, right: 20, bottom: 20, left: 0 }} stackOffset="none">
           <XAxis
             dataKey="label"
             tick={{ fill: 'var(--muted)', fontSize: 10 }}
@@ -291,7 +304,8 @@ function ObsHistogram({ airports }) {
             label={{ value: 'Airports', angle: -90, position: 'insideLeft', fill: 'var(--muted)', fontSize: 11 }}
           />
           <Tooltip content={<ObsTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-          <Bar dataKey="count" fill="#60a5fa" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="civilian" stackId="a" fill="#60a5fa" />
+          <Bar dataKey="military" stackId="a" fill="#fbbf24" radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
