@@ -83,6 +83,11 @@ def _migrate_schema() -> None:
         ("airports",        "climate_region",            "TEXT"),
         ("tafs",            "is_amendment",              "INTEGER DEFAULT 0"),
         ("tafs",            "is_correction",             "INTEGER DEFAULT 0"),
+        ("forecast_scores", "ceiling_coverage_diff",    "INTEGER"),
+        ("forecast_scores", "ceiling_altitude_diff",    "INTEGER"),
+        ("forecast_scores", "visibility_diff",          "REAL"),
+        ("forecast_scores", "wind_speed_diff",          "INTEGER"),
+        ("forecast_scores", "wind_dir_diff",            "INTEGER"),
     ]
     with _engine.connect() as conn:
         for table, column, col_type in migrations:

@@ -452,16 +452,59 @@ def fetch_mesonet_metars(icao: str, start_dt: datetime, end_dt: datetime) -> lis
 
 
 # ---------------------------------------------------------------------------
+# CSV pre-load (for --taf-csv mode)
+# ---------------------------------------------------------------------------
+
+def load_tafs_from_csv(csv_paths: list[str]) -> dict[str, list[dict]]:
+    """
+    Pre-load one or more Mesonet TAF CSV files into a dict keyed by ICAO.
+    Each value is a list of TAF dicts ready for _upsert_taf().
+    """
+    # Accumulate all rows grouped by (station, product_id)
+    raw_groups: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
+
+    for path in csv_paths:
+        print(f"Loading {path} …")
+        with open(path, newline="", encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                icao = row.get("station", "").strip().upper()
+                pid  = row.get("product_id", "").strip()
+                if not icao:
+                    continue
+                if not pid:
+                    pid = f"{icao}_{row.get('valid', '')}"
+                raw_groups[icao][pid].append(row)
+
+    result: dict[str, list[dict]] = {}
+    for icao, groups in raw_groups.items():
+        tafs = []
+        for product_id, rows in groups.items():
+            taf = _build_taf_dict(icao, rows)
+            if taf:
+                tafs.append(taf)
+        tafs.sort(key=lambda t: t.get("issue_time") or "")
+        result[icao] = tafs
+
+    total_tafs = sum(len(v) for v in result.values())
+    print(f"Loaded {total_tafs} TAFs across {len(result)} stations.\n")
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Per-station backfill
 # ---------------------------------------------------------------------------
 
-def backfill_station(icao: str, start_dt: datetime, end_dt: datetime) -> dict:
+def backfill_station(icao: str, start_dt: datetime, end_dt: datetime,
+                     csv_tafs: Optional[dict] = None) -> dict:
     stats = dict(
         icao=icao, tafs_new=0, tafs_seen=0,
         metars_new=0, metars_seen=0, scores_new=0, errors=[]
     )
 
-    tafs   = fetch_mesonet_tafs(icao, start_dt, end_dt)
+    if csv_tafs is not None:
+        tafs = csv_tafs.get(icao.upper(), [])
+    else:
+        tafs = fetch_mesonet_tafs(icao, start_dt, end_dt)
     metars = fetch_mesonet_metars(icao, start_dt, end_dt)
 
     with get_session() as session:
@@ -517,6 +560,8 @@ def main() -> int:
                         help="Specific airports (default: all in DB)")
     parser.add_argument("--workers",  type=int, default=4,
                         help="Parallel worker threads (default: 4)")
+    parser.add_argument("--taf-csv", nargs="+", metavar="FILE",
+                        help="Pre-loaded Mesonet TAF CSV files (skips TAF network fetch)")
     parser.add_argument("--verbose",  "-v", action="store_true")
     args = parser.parse_args()
 
@@ -547,6 +592,9 @@ def main() -> int:
             stations = [row[0] for row in session.query(Airport.icao).all()]
 
     total = len(stations)
+    # Pre-load CSVs if provided
+    csv_tafs = load_tafs_from_csv(args.taf_csv) if args.taf_csv else None
+
     print(f"Stations   : {total}")
     print(f"Workers    : {args.workers} (network semaphore: 2)\n")
 
@@ -557,7 +605,7 @@ def main() -> int:
     print_lock = threading.Lock()
 
     def process(icao):
-        return icao, backfill_station(icao, start_dt, end_dt)
+        return icao, backfill_station(icao, start_dt, end_dt, csv_tafs=csv_tafs)
 
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futures = {pool.submit(process, icao): icao for icao in stations}

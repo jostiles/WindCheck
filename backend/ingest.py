@@ -431,6 +431,11 @@ def _upsert_scores(
             wx_recall              =row.get("wx_recall"),
             overall_score          =row.get("overall_score"),
             tempo_active           =row.get("tempo_active", 0),
+            ceiling_coverage_diff  =row.get("ceiling_coverage_diff"),
+            ceiling_altitude_diff  =row.get("ceiling_altitude_diff"),
+            visibility_diff        =row.get("visibility_diff"),
+            wind_speed_diff        =row.get("wind_speed_diff"),
+            wind_dir_diff          =row.get("wind_dir_diff"),
         )
         session.add(fs)
         inserted += 1
@@ -676,6 +681,11 @@ def _score_unscored_from_db(icao: str) -> int:
                 wx_recall              =row.get("wx_recall"),
                 overall_score          =row.get("overall_score"),
                 tempo_active           =row.get("tempo_active", 0),
+                ceiling_coverage_diff  =row.get("ceiling_coverage_diff"),
+                ceiling_altitude_diff  =row.get("ceiling_altitude_diff"),
+                visibility_diff        =row.get("visibility_diff"),
+                wind_speed_diff        =row.get("wind_speed_diff"),
+                wind_dir_diff          =row.get("wind_dir_diff"),
             )
             session.add(fs)
             inserted += 1

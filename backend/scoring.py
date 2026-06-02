@@ -716,6 +716,27 @@ def score_metar_vs_taf(
     dir_score  = score_wind_direction(fc_wdir, ob_wdir, fc_wvar, ob_wvar)
     wx_prec, wx_rec = score_weather_phenomena(fc_wx, ob_wx)
 
+    # Absolute differences
+    _cov_ord = {"SKC": 0, "FEW": 1, "SCT": 2, "BKN": 3, "OVC": 4, "VV": 4}
+    ceil_cov_diff: int = abs(
+        _cov_ord.get(fc_ceil_cov or "SKC", 0) - _cov_ord.get(ob_ceil_cov or "SKC", 0)
+    )
+    ceil_alt_diff: Optional[int] = (
+        abs(fc_ceil_ft - ob_ceil_ft) if fc_ceil_ft is not None and ob_ceil_ft is not None else None
+    )
+    vis_diff: Optional[float] = (
+        round(abs(fc_vis - ob_vis), 2) if fc_vis is not None and ob_vis is not None else None
+    )
+    spd_diff: Optional[int] = (
+        abs(fc_wspd - ob_wspd) if fc_wspd is not None and ob_wspd is not None else None
+    )
+    _raw_dir = (
+        abs(fc_wdir - ob_wdir)
+        if fc_wdir is not None and ob_wdir is not None and not fc_wvar and not ob_wvar
+        else None
+    )
+    dir_diff: Optional[int] = min(_raw_dir, 360 - _raw_dir) if _raw_dir is not None else None
+
     # overall: average ceiling_coverage + ceiling_altitude + visibility +
     # wind_speed + wind_dir.  wx_precision/wx_recall are stored for future
     # use but intentionally excluded from the overall score.
@@ -744,6 +765,11 @@ def score_metar_vs_taf(
         "wx_recall":              wx_rec,
         "overall_score":          overall,
         "tempo_active":           1 if tempo_cond is not None else 0,
+        "ceiling_coverage_diff":  ceil_cov_diff,
+        "ceiling_altitude_diff":  ceil_alt_diff,
+        "visibility_diff":        vis_diff,
+        "wind_speed_diff":        spd_diff,
+        "wind_dir_diff":          dir_diff,
     }
 
 

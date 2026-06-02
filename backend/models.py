@@ -246,6 +246,13 @@ class ForecastScore(Base):
 
     overall_score = Column(Float)
 
+    # Absolute differences (|forecast − observed|); NULL when either side is missing
+    ceiling_coverage_diff = Column(Integer)  # ordinal coverage scale 0-4
+    ceiling_altitude_diff = Column(Integer)  # feet
+    visibility_diff       = Column(Float)    # statute miles
+    wind_speed_diff       = Column(Integer)  # knots
+    wind_dir_diff         = Column(Integer)  # degrees 0-180
+
     # 1 when the observation fell inside an active TEMPO or PROB window.
     # Stored for analysis but not used to change scores.
     tempo_active = Column(Integer, default=0)

@@ -15,6 +15,14 @@ const PARAM_COLS = [
   { key: 'wind_dir_score',         label: 'Wind Dir'   },
 ]
 
+const DIFF_COLS = [
+  { key: 'ceiling_coverage_diff', label: 'Sky Cover', unit: '/4',  fmt: v => v.toFixed(1),              greenBelow: 0.5, yellowBelow: 1.5 },
+  { key: 'ceiling_altitude_diff', label: 'Cig Alt',   unit: 'ft',  fmt: v => Math.round(v).toLocaleString(), greenBelow: 500, yellowBelow: 1500 },
+  { key: 'visibility_diff',       label: 'Visibility', unit: 'SM', fmt: v => v.toFixed(1),              greenBelow: 1.0, yellowBelow: 3.0  },
+  { key: 'wind_speed_diff',       label: 'Wind Spd',  unit: 'kt',  fmt: v => Math.round(v),             greenBelow: 5,   yellowBelow: 15   },
+  { key: 'wind_dir_diff',         label: 'Wind Dir',  unit: '°',   fmt: v => Math.round(v),             greenBelow: 20,  yellowBelow: 45   },
+]
+
 const US_STATES = [
   'AK','AL','AR','AZ','CA','CO','CT','DC','DE','FL','GA','HI','IA','ID','IL','IN',
   'KS','KY','LA','MA','MD','ME','MI','MN','MO','MS','MT','NC','ND','NE','NH','NJ',
@@ -53,6 +61,13 @@ function ScoreCell({ value }) {
   return <span className="score-cell" style={{ color }}>{pct}%</span>
 }
 
+function DiffCell({ value, greenBelow, yellowBelow, unit, fmt }) {
+  if (value === null || value === undefined)
+    return <span className="score-null">—</span>
+  const color = value < greenBelow ? '#22c55e' : value < yellowBelow ? '#f59e0b' : '#ef4444'
+  return <span className="score-cell" style={{ color }}>{fmt(value)}{unit !== '/4' ? ` ${unit}` : ''}</span>
+}
+
 export default function Leaderboard({ onSelectAirport, weights, setWeights, defaultWeights }) {
   const [rows,           setRows]           = useState([])
   const [minObs,         setMinObs]         = useState(1)
@@ -62,6 +77,7 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
   const [regionFilter,   setRegionFilter]   = useState('')
   const [sortAsc,        setSortAsc]        = useState(false)
   const [sortKey,        setSortKey]        = useState('overall')
+  const [viewMode,       setViewMode]       = useState('score')  // 'score' | 'diff'
   const [loading,        setLoading]        = useState(false)
   const [error,          setError]          = useState(null)
   const [trackingSince,  setTrackingSince]  = useState(null)
@@ -84,11 +100,26 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
       .finally(() => setLoading(false))
   }, [minObs, stateFilter, militaryOnly, wfoFilter, regionFilter])
 
+  const isDiffMode = viewMode === 'diff'
+
   function handleColSort(key) {
     if (sortKey === key) {
       setSortAsc(a => !a)
     } else {
       setSortKey(key)
+      // Diff columns default to ascending (lower = better); score columns descending
+      const isDiffCol = DIFF_COLS.some(c => c.key === key)
+      setSortAsc(isDiffCol)
+    }
+  }
+
+  function switchViewMode(mode) {
+    setViewMode(mode)
+    if (mode === 'diff') {
+      setSortKey('ceiling_coverage_diff')
+      setSortAsc(true)
+    } else {
+      setSortKey('overall')
       setSortAsc(false)
     }
   }
@@ -101,8 +132,9 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
         va = weightedScore(a, weights) ?? -1
         vb = weightedScore(b, weights) ?? -1
       } else {
-        va = a[sortKey] ?? -1
-        vb = b[sortKey] ?? -1
+        const nullVal = sortAsc ? Infinity : -1
+        va = a[sortKey] ?? nullVal
+        vb = b[sortKey] ?? nullVal
       }
       return sortAsc ? va - vb : vb - va
     })
@@ -133,6 +165,22 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
               Tracking data since {trackingSince}
             </span>
           )}
+          <div style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
+            <button
+              className={`btn btn-sm${!isDiffMode ? ' btn-primary' : ' btn-ghost'}`}
+              onClick={() => switchViewMode('score')}
+              title="Show accuracy scores (0–100%, higher is better)"
+            >
+              Score
+            </button>
+            <button
+              className={`btn btn-sm${isDiffMode ? ' btn-primary' : ' btn-ghost'}`}
+              onClick={() => switchViewMode('diff')}
+              title="Show average absolute difference between forecast and observed values"
+            >
+              Abs Diff
+            </button>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
@@ -203,46 +251,76 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                     <th title="Weather Forecast Office — the NWS office responsible for issuing TAFs at this location. Sourced from api.weather.gov/points using the airport's lat/lon.">WFO ⓘ</th>
                     <th>Mil</th>
                     <th>Obs</th>
-                    {[{ key: 'overall', label: 'Overall' }, ...PARAM_COLS].map(col => (
-                      <th
-                        key={col.key}
-                        className="sortable"
-                        style={{ cursor: 'pointer', userSelect: 'none', color: sortKey === col.key ? 'var(--accent2)' : '' }}
-                        onClick={() => handleColSort(col.key)}
-                      >
-                        {col.label}
-                        <span className="sort-arrow" style={{ fontSize: 10 }}>
-                          {sortKey === col.key ? (sortAsc ? ' ▲' : ' ▼') : ' ·'}
-                        </span>
-                      </th>
-                    ))}
-                  </tr>
-                  {/* Weight sliders */}
-                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    <th colSpan={6} style={{ padding: '6px 14px', fontWeight: 400, fontSize: 11, color: 'var(--muted)', textAlign: 'left', textTransform: 'none', letterSpacing: 0 }}>
-                      Weights
-                    </th>
-                    <th style={{ padding: '6px 14px' }} />
-                    {PARAM_COLS.map(col => {
-                      const w = weights[col.key]
-                      const pct = totalWeight > 0 ? Math.round((w / totalWeight) * 100) : 0
-                      return (
-                        <th key={col.key} style={{ padding: '4px 14px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-                            <input
-                              type="range"
-                              min={0} max={10} step={1}
-                              value={w}
-                              onChange={e => setWeight(col.key, e.target.value)}
-                              style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
-                            />
-                            <span style={{ fontSize: 10, color: w === 0 ? 'var(--gray)' : 'var(--muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
-                              {w === 0 ? 'off' : `${pct}%`}
+                    {isDiffMode
+                      ? DIFF_COLS.map(col => (
+                          <th
+                            key={col.key}
+                            className="sortable"
+                            style={{ cursor: 'pointer', userSelect: 'none', color: sortKey === col.key ? 'var(--accent2)' : '' }}
+                            onClick={() => handleColSort(col.key)}
+                          >
+                            {col.label}
+                            <span className="sort-arrow" style={{ fontSize: 10 }}>
+                              {sortKey === col.key ? (sortAsc ? ' ▲' : ' ▼') : ' ·'}
                             </span>
-                          </div>
+                          </th>
+                        ))
+                      : [{ key: 'overall', label: 'Overall' }, ...PARAM_COLS].map(col => (
+                          <th
+                            key={col.key}
+                            className="sortable"
+                            style={{ cursor: 'pointer', userSelect: 'none', color: sortKey === col.key ? 'var(--accent2)' : '' }}
+                            onClick={() => handleColSort(col.key)}
+                          >
+                            {col.label}
+                            <span className="sort-arrow" style={{ fontSize: 10 }}>
+                              {sortKey === col.key ? (sortAsc ? ' ▲' : ' ▼') : ' ·'}
+                            </span>
+                          </th>
+                        ))
+                    }
+                  </tr>
+                  {/* Weight sliders (score mode only) / units row (diff mode) */}
+                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                    {isDiffMode ? (
+                      <>
+                        <th colSpan={6} style={{ padding: '6px 14px', fontWeight: 400, fontSize: 11, color: 'var(--muted)', textAlign: 'left', textTransform: 'none', letterSpacing: 0 }}>
+                          Avg absolute error — lower is better
                         </th>
-                      )
-                    })}
+                        {DIFF_COLS.map(col => (
+                          <th key={col.key} style={{ padding: '6px 14px', fontWeight: 400, fontSize: 10, color: 'var(--muted)', textAlign: 'center', textTransform: 'none', letterSpacing: 0 }}>
+                            {col.unit === '/4' ? 'ordinal (0–4)' : col.unit}
+                          </th>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        <th colSpan={6} style={{ padding: '6px 14px', fontWeight: 400, fontSize: 11, color: 'var(--muted)', textAlign: 'left', textTransform: 'none', letterSpacing: 0 }}>
+                          Weights
+                        </th>
+                        <th style={{ padding: '6px 14px' }} />
+                        {PARAM_COLS.map(col => {
+                          const w = weights[col.key]
+                          const pct = totalWeight > 0 ? Math.round((w / totalWeight) * 100) : 0
+                          return (
+                            <th key={col.key} style={{ padding: '4px 14px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+                                <input
+                                  type="range"
+                                  min={0} max={10} step={1}
+                                  value={w}
+                                  onChange={e => setWeight(col.key, e.target.value)}
+                                  style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                                />
+                                <span style={{ fontSize: 10, color: w === 0 ? 'var(--gray)' : 'var(--muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+                                  {w === 0 ? 'off' : `${pct}%`}
+                                </span>
+                              </div>
+                            </th>
+                          )
+                        })}
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -276,12 +354,27 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                           )}
                         </td>
                         <td style={{ color: 'var(--muted)' }}>{r.observation_count}</td>
-                        <td><ScoreCell value={ws} /></td>
-                        <td><ScoreCell value={r.ceiling_coverage_score} /></td>
-                        <td><ScoreCell value={r.ceiling_altitude_score} /></td>
-                        <td><ScoreCell value={r.visibility_score} /></td>
-                        <td><ScoreCell value={r.wind_speed_score} /></td>
-                        <td><ScoreCell value={r.wind_dir_score} /></td>
+                        {isDiffMode
+                          ? DIFF_COLS.map(col => (
+                              <td key={col.key}>
+                                <DiffCell
+                                  value={r[col.key]}
+                                  greenBelow={col.greenBelow}
+                                  yellowBelow={col.yellowBelow}
+                                  unit={col.unit}
+                                  fmt={col.fmt}
+                                />
+                              </td>
+                            ))
+                          : <>
+                              <td><ScoreCell value={ws} /></td>
+                              <td><ScoreCell value={r.ceiling_coverage_score} /></td>
+                              <td><ScoreCell value={r.ceiling_altitude_score} /></td>
+                              <td><ScoreCell value={r.visibility_score} /></td>
+                              <td><ScoreCell value={r.wind_speed_score} /></td>
+                              <td><ScoreCell value={r.wind_dir_score} /></td>
+                            </>
+                        }
                       </tr>
                     )
                   })}

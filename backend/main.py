@@ -153,6 +153,11 @@ class LeaderboardEntry(BaseModel):
     wind_speed_score:       Optional[float]
     wind_dir_score:         Optional[float]
     amendment_pct:          Optional[float]
+    ceiling_coverage_diff:  Optional[float]
+    ceiling_altitude_diff:  Optional[float]
+    visibility_diff:        Optional[float]
+    wind_speed_diff:        Optional[float]
+    wind_dir_diff:          Optional[float]
 
 
 class IngestResponse(BaseModel):
@@ -209,6 +214,11 @@ def _score_agg_cols():
         func.avg(ForecastScore.wind_dir_score)            .label("wind_dir"),
         func.avg(ForecastScore.wx_precision)              .label("wx_prec"),
         func.avg(ForecastScore.wx_recall)                 .label("wx_rec"),
+        func.avg(ForecastScore.ceiling_coverage_diff)     .label("ceil_cov_diff"),
+        func.avg(ForecastScore.ceiling_altitude_diff)     .label("ceil_alt_diff"),
+        func.avg(ForecastScore.visibility_diff)           .label("vis_diff"),
+        func.avg(ForecastScore.wind_speed_diff)           .label("wind_spd_diff"),
+        func.avg(ForecastScore.wind_dir_diff)             .label("wind_dir_diff"),
     ]
 
 
@@ -595,16 +605,21 @@ def leaderboard(
     ``sort_by`` must be one of the score column names; any other value falls
     back to ``overall_score``.
     """
-    # Whitelist sortable columns
+    # Whitelist sortable columns (score cols sort desc, diff cols sort asc)
     _sort_map = {
-        "overall_score":          func.avg(ForecastScore.overall_score),
-        "ceiling_coverage_score": func.avg(ForecastScore.ceiling_coverage_score),
-        "ceiling_altitude_score": func.avg(ForecastScore.ceiling_altitude_score),
-        "visibility_score":       func.avg(ForecastScore.visibility_score),
-        "wind_speed_score":       func.avg(ForecastScore.wind_speed_score),
-        "wind_dir_score":         func.avg(ForecastScore.wind_dir_score),
+        "overall_score":          (func.avg(ForecastScore.overall_score),          False),
+        "ceiling_coverage_score": (func.avg(ForecastScore.ceiling_coverage_score), False),
+        "ceiling_altitude_score": (func.avg(ForecastScore.ceiling_altitude_score), False),
+        "visibility_score":       (func.avg(ForecastScore.visibility_score),       False),
+        "wind_speed_score":       (func.avg(ForecastScore.wind_speed_score),       False),
+        "wind_dir_score":         (func.avg(ForecastScore.wind_dir_score),         False),
+        "ceiling_coverage_diff":  (func.avg(ForecastScore.ceiling_coverage_diff),  True),
+        "ceiling_altitude_diff":  (func.avg(ForecastScore.ceiling_altitude_diff),  True),
+        "visibility_diff":        (func.avg(ForecastScore.visibility_diff),        True),
+        "wind_speed_diff":        (func.avg(ForecastScore.wind_speed_diff),        True),
+        "wind_dir_diff":          (func.avg(ForecastScore.wind_dir_diff),          True),
     }
-    sort_col = _sort_map.get(sort_by, _sort_map["overall_score"])
+    sort_col, sort_asc = _sort_map.get(sort_by, _sort_map["overall_score"])
 
     with get_session() as session:
         # Subquery: amendment rate per airport
@@ -642,7 +657,8 @@ def leaderboard(
             q = q.filter(Airport.wfo == wfo.upper())
         if climate_region:
             q = q.filter(Airport.climate_region == climate_region)
-        rows = q.order_by(sort_col.desc().nullslast()).limit(limit).all()
+        order_expr = sort_col.asc().nullslast() if sort_asc else sort_col.desc().nullslast()
+        rows = q.order_by(order_expr).limit(limit).all()
 
     return [
         LeaderboardEntry(
@@ -663,6 +679,11 @@ def leaderboard(
             wind_speed_score       =_round(r.wind_speed),
             wind_dir_score         =_round(r.wind_dir),
             amendment_pct          =_round(r.amd_pct),
+            ceiling_coverage_diff  =_round(r.ceil_cov_diff),
+            ceiling_altitude_diff  =_round(r.ceil_alt_diff),
+            visibility_diff        =_round(r.vis_diff),
+            wind_speed_diff        =_round(r.wind_spd_diff),
+            wind_dir_diff          =_round(r.wind_dir_diff),
         )
         for i, r in enumerate(rows)
     ]
