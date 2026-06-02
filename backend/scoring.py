@@ -722,7 +722,7 @@ def score_metar_vs_taf(
         _cov_ord.get(fc_ceil_cov or "SKC", 0) - _cov_ord.get(ob_ceil_cov or "SKC", 0)
     )
     ceil_alt_diff: Optional[int] = (
-        abs(fc_ceil_ft - ob_ceil_ft) if fc_ceil_ft is not None and ob_ceil_ft is not None else None
+        abs(fc_ceil_ft - ob_ceil_ft) if ceil_alt_score is not None else None
     )
     vis_diff: Optional[float] = (
         round(abs(fc_vis - ob_vis), 2) if fc_vis is not None and ob_vis is not None else None
