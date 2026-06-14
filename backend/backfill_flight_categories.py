@@ -1,41 +1,64 @@
 """
 backfill_flight_categories.py — populate fc_flight_category and ob_flight_category
-on existing forecast_scores rows.
+on existing forecast_scores rows using pure SQL for speed.
 
-Observed category: derived from metars.ceiling_ft + metars.visibility_sm (direct join).
-Forecast category: derived by re-running resolve_taf_conditions_at_time for each row.
+Observed: directly from metars.ceiling_ft / metars.visibility_sm.
+Forecast: from the TAF period (BASE or FM) whose window covers the observation time.
+          BECMG transitions are approximated (rare edge case, negligible impact).
 
 Run once:
     python backend/backfill_flight_categories.py
 """
 
-import sys
-import os
+import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
-from database import get_session, init_db, _engine
+from database import get_session, init_db
 from sqlalchemy import text
-from scoring import flight_category, resolve_taf_conditions_at_time, _iso
-from ingest import _taf_orm_to_dict
-from models import TAF
 
-BATCH = 2_000
+BATCH = 50_000
 
-
-def _ob_category_sql():
-    """SQL CASE expression for observed flight category from metars columns."""
-    return """
+# SQL CASE expression: OR logic, NULL ceiling/vis = VFR
+def _cat_expr(ceil_col, vis_col):
+    return f"""
         CASE
-            WHEN (m.ceiling_ft IS NOT NULL AND m.ceiling_ft < 500)
-              OR (m.visibility_sm IS NOT NULL AND m.visibility_sm < 1.0) THEN 'LIFR'
-            WHEN (m.ceiling_ft IS NOT NULL AND m.ceiling_ft < 1000)
-              OR (m.visibility_sm IS NOT NULL AND m.visibility_sm < 3.0) THEN 'IFR'
-            WHEN (m.ceiling_ft IS NOT NULL AND m.ceiling_ft < 3000)
-              OR (m.visibility_sm IS NOT NULL AND m.visibility_sm < 5.0) THEN 'MVFR'
+            WHEN ({ceil_col} IS NOT NULL AND {ceil_col} < 500)
+              OR ({vis_col}  IS NOT NULL AND {vis_col}  < 1.0) THEN 'LIFR'
+            WHEN ({ceil_col} IS NOT NULL AND {ceil_col} < 1000)
+              OR ({vis_col}  IS NOT NULL AND {vis_col}  < 3.0) THEN 'IFR'
+            WHEN ({ceil_col} IS NOT NULL AND {ceil_col} < 3000)
+              OR ({vis_col}  IS NOT NULL AND {vis_col}  < 5.0) THEN 'MVFR'
             ELSE 'VFR'
         END
     """
 
+OB_CAT  = _cat_expr("m.ceiling_ft",  "m.visibility_sm")
+FC_CAT  = _cat_expr("tp.ceiling_ft", "tp.visibility_sm")
+
+UPDATE_SQL = f"""
+    UPDATE forecast_scores
+    SET
+        ob_flight_category = (
+            SELECT {OB_CAT}
+            FROM metars m
+            WHERE m.id = forecast_scores.metar_id
+        ),
+        fc_flight_category = (
+            SELECT {FC_CAT}
+            FROM taf_periods tp
+            JOIN metars m ON m.id = forecast_scores.metar_id
+            WHERE tp.taf_id = forecast_scores.taf_id
+              AND tp.period_type IN ('BASE', 'FM')
+              AND tp.valid_from <= m.observation_time
+            ORDER BY tp.valid_from DESC
+            LIMIT 1
+        )
+    WHERE id IN (
+        SELECT id FROM forecast_scores
+        WHERE fc_flight_category IS NULL
+        LIMIT {BATCH}
+    )
+"""
 
 def main():
     init_db()
@@ -50,81 +73,19 @@ def main():
         print("Nothing to do.")
         return
 
-    # Cache TAFs to avoid repeated DB hits
-    taf_cache: dict = {}
-
     updated = 0
     while True:
         with get_session() as session:
-            rows = session.execute(text("""
-                SELECT
-                    fs.id,
-                    fs.taf_id,
-                    fs.metar_id,
-                    m.observation_time,
-                    m.ceiling_ft   AS ob_ceil,
-                    m.visibility_sm AS ob_vis
-                FROM forecast_scores fs
-                JOIN metars m ON fs.metar_id = m.id
-                WHERE fs.fc_flight_category IS NULL
-                LIMIT :batch
-            """), {"batch": BATCH}).fetchall()
+            result = session.execute(text(UPDATE_SQL))
+            n = result.rowcount
 
-            if not rows:
-                break
-
-            updates = []
-            for row in rows:
-                ob_cat = flight_category(row.ob_ceil, row.ob_vis)
-
-                # Get TAF periods for forecast category
-                taf_id = row.taf_id
-                if taf_id not in taf_cache:
-                    taf_orm = session.query(TAF).get(taf_id)
-                    if taf_orm:
-                        taf_cache[taf_id] = _taf_orm_to_dict(taf_orm)
-                    else:
-                        taf_cache[taf_id] = None
-
-                taf = taf_cache.get(taf_id)
-                fc_cat = "VFR"  # fallback
-                if taf:
-                    obs_time = _iso(row.observation_time)
-                    taf_from = _iso(taf["valid_from"])
-                    taf_to   = _iso(taf["valid_to"])
-                    base_cond, _ = resolve_taf_conditions_at_time(
-                        taf.get("periods", []), obs_time, taf_from, taf_to
-                    )
-                    if base_cond:
-                        fc_cat = flight_category(
-                            base_cond.get("ceiling_ft"),
-                            base_cond.get("visibility_sm"),
-                        )
-
-                updates.append({
-                    "id":     row.id,
-                    "fc_cat": fc_cat,
-                    "ob_cat": ob_cat,
-                })
-
-            for u in updates:
-                session.execute(text("""
-                    UPDATE forecast_scores
-                    SET fc_flight_category = :fc_cat,
-                        ob_flight_category = :ob_cat
-                    WHERE id = :id
-                """), u)
-
-            updated += len(updates)
-
-        # Clear cache periodically to avoid unbounded memory growth
-        if len(taf_cache) > 5000:
-            taf_cache.clear()
-
-        print(f"  {updated:,} / {total:,} ({100*updated/total:.1f}%)")
+        if n == 0:
+            break
+        updated += n
+        pct = 100 * updated / total
+        print(f"  {updated:,} / {total:,} ({pct:.1f}%)")
 
     print(f"Done. {updated:,} rows backfilled.")
-
 
 if __name__ == "__main__":
     main()
