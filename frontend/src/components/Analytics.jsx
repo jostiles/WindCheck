@@ -328,10 +328,9 @@ function RegressionTable({ airports }) {
 
     const X = rows.map(r => [
       1,                                                    // intercept
-      r.lat - meanLat,                                      // latitude (centered)
-      r.lon - meanLon,                                      // longitude (centered)
       r.amendment_pct - meanAmd,                            // amendment rate (centered)
       r.is_military ? 1 : 0,                                // military (binary)
+      ...DUMMY_REGIONS.map(reg => r.climate_region === reg ? 1 : 0), // region dummies
     ])
     const y = rows.map(r => r.overall_score * 100)         // score in %
 
@@ -340,10 +339,9 @@ function RegressionTable({ airports }) {
 
     const labels = [
       'Intercept',
-      'Latitude (per °N)',
-      'Longitude (per °E)',
       'Amendment rate (per 1%)',
       'Military airport',
+      ...DUMMY_REGIONS.map(r => `Region: ${r}`),
     ]
 
     return {
@@ -368,7 +366,7 @@ function RegressionTable({ airports }) {
       <div className="section-title">Multiple linear regression: predictors of overall score</div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>
         OLS regression with <strong style={{ color: 'var(--text)' }}>overall score (0–100%)</strong> as the outcome.
-        Continuous variables are mean-centered.
+        Continuous variables are mean-centered. Region baseline = Northeast.
         n = {n} airports.
       </div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
