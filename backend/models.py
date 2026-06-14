@@ -264,6 +264,7 @@ class ForecastScore(Base):
     __table_args__ = (
         UniqueConstraint("metar_id", "taf_id", name="uq_score_metar_taf"),
         Index("ix_score_airport_offset", "airport_icao", "forecast_hour_offset"),
+        Index("ix_score_airport_metar", "airport_icao", "metar_id"),
     )
 
     def __repr__(self) -> str:

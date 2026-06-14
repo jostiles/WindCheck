@@ -101,6 +101,17 @@ def _migrate_schema() -> None:
             except Exception:
                 pass  # column already exists
 
+        # Index migrations
+        index_migrations = [
+            "CREATE INDEX IF NOT EXISTS ix_score_airport_metar ON forecast_scores (airport_icao, metar_id)",
+        ]
+        for idx_sql in index_migrations:
+            try:
+                conn.execute(__import__("sqlalchemy").text(idx_sql))
+                conn.commit()
+            except Exception:
+                pass
+
 
 @contextmanager
 def get_session() -> Session:
