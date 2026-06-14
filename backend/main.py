@@ -70,9 +70,7 @@ _INGEST_KEY = os.getenv("INGEST_API_KEY", "")
 
 def _require_ingest_key(x_api_key: str = Header(default="")):
     """Dependency that enforces the INGEST_API_KEY on write endpoints."""
-    if not _INGEST_KEY:
-        return  # key not configured — allow (dev mode)
-    if x_api_key != _INGEST_KEY:
+    if not _INGEST_KEY or x_api_key != _INGEST_KEY:
         raise HTTPException(401, "Invalid or missing X-Api-Key header")
 
 
