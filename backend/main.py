@@ -205,7 +205,7 @@ def _summary_from_rows(rows) -> ScoreSummary:
 def _score_agg_cols():
     """SQLAlchemy column expressions for the standard aggregate score set."""
     return [
-        func.count(ForecastScore.id)                      .label("cnt"),
+        func.count(func.distinct(ForecastScore.metar_id))  .label("cnt"),
         func.avg(ForecastScore.overall_score)             .label("overall"),
         func.avg(ForecastScore.ceiling_coverage_score)    .label("ceil_cov"),
         func.avg(ForecastScore.ceiling_altitude_score)    .label("ceil_alt"),
@@ -258,7 +258,7 @@ def list_airports(min_obs: int = Query(1, ge=1, description="Minimum observation
             )
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
             .group_by(Airport.icao, Airport.name)
-            .having(func.count(ForecastScore.id) >= min_obs)
+            .having(func.count(func.distinct(ForecastScore.metar_id)) >= min_obs)
             .order_by(func.avg(ForecastScore.overall_score).desc().nullslast())
             .all()
         )
@@ -474,7 +474,7 @@ def map_data(min_obs: int = Query(1, ge=1)):
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
             .filter(Airport.lat.isnot(None), Airport.lon.isnot(None))
             .group_by(Airport.icao, Airport.name, Airport.lat, Airport.lon)
-            .having(func.count(ForecastScore.id) >= min_obs)
+            .having(func.count(func.distinct(ForecastScore.metar_id)) >= min_obs)
             .all()
         )
 
@@ -647,7 +647,7 @@ def leaderboard(
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
             .outerjoin(amd_sub, Airport.icao == amd_sub.c.icao)
             .group_by(Airport.icao, Airport.name, Airport.state, Airport.wfo, Airport.climate_region, Airport.lat, Airport.lon, amd_sub.c.amd_pct)
-            .having(func.count(ForecastScore.id) >= min_obs)
+            .having(func.count(func.distinct(ForecastScore.metar_id)) >= min_obs)
         )
         if state:
             q = q.filter(Airport.state == state.upper())
