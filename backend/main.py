@@ -726,6 +726,52 @@ def ingest_airport(icao: str, background_tasks: BackgroundTasks, _=Depends(_requ
     return IngestResponse(status="queued", airports=[icao])
 
 
+# ── /analytics ───────────────────────────────────────────────────────────────
+
+@app.get("/analytics")
+def analytics():
+    """
+    Pre-aggregated data for the Analytics page.
+
+    Returns a slim per-airport array (only fields needed for charts/regression)
+    plus server-side aggregates for region scores and score distribution.
+    Much faster than fetching the full leaderboard.
+    """
+    with get_session() as session:
+        rows = (
+            session.query(
+                Airport.icao,
+                Airport.lat,
+                Airport.lon,
+                Airport.climate_region,
+                Airport.state,
+                func.count(ForecastScore.id).label("cnt"),
+                func.avg(ForecastScore.overall_score).label("overall"),
+                func.avg(cast(TAF.is_amendment, Float)).label("amd_pct"),
+            )
+            .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
+            .join(TAF, ForecastScore.taf_id == TAF.id)
+            .group_by(Airport.icao, Airport.lat, Airport.lon, Airport.climate_region, Airport.state)
+            .all()
+        )
+
+    airports = [
+        {
+            "icao":            r.icao,
+            "lat":             r.lat,
+            "lon":             r.lon,
+            "climate_region":  r.climate_region,
+            "is_military":     r.icao in MILITARY_STATIONS,
+            "observation_count": r.cnt,
+            "overall_score":   round(r.overall, 4) if r.overall is not None else None,
+            "amendment_pct":   round(r.amd_pct * 100, 2) if r.amd_pct is not None else None,
+        }
+        for r in rows
+    ]
+
+    return {"airports": airports}
+
+
 @app.post("/ingest/batch", response_model=IngestResponse)
 def ingest_batch(
     background_tasks: BackgroundTasks,

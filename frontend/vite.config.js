@@ -13,6 +13,7 @@ export default defineConfig({
       '/health':      'http://localhost:8000',
       '/map-data':    'http://localhost:8000',
       '/stats':       'http://localhost:8000',
+      '/analytics':   'http://localhost:8000',
     },
   },
 })

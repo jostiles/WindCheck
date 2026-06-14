@@ -7,7 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
   ReferenceLine, ResponsiveContainer,
 } from 'recharts'
-import { fetchLeaderboard } from '../api'
+import { fetchAnalytics } from '../api'
 
 const REGION_COLORS = {
   'Northeast':           '#60a5fa',
@@ -425,7 +425,7 @@ export default function Analytics({ onSelectAirport }) {
   const [error,    setError]    = useState(null)
 
   useEffect(() => {
-    fetchLeaderboard('overall_score', 1)
+    fetchAnalytics()
       .then(setAirports)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
