@@ -326,11 +326,14 @@ function RegressionTable({ airports }) {
     const meanLon = rows.reduce((s, r) => s + r.lon, 0) / rows.length
     const meanAmd = rows.reduce((s, r) => s + r.amendment_pct, 0) / rows.length
 
+    // Only include regions present in data (zero-column dummies break matrix inversion)
+    const presentRegions = DUMMY_REGIONS.filter(reg => rows.some(r => r.climate_region === reg))
+
     const X = rows.map(r => [
       1,                                                    // intercept
       r.amendment_pct - meanAmd,                            // amendment rate (centered)
       r.is_military ? 1 : 0,                                // military (binary)
-      ...DUMMY_REGIONS.map(reg => r.climate_region === reg ? 1 : 0), // region dummies
+      ...presentRegions.map(reg => r.climate_region === reg ? 1 : 0), // region dummies
     ])
     const y = rows.map(r => r.overall_score * 100)         // score in %
 
@@ -341,7 +344,7 @@ function RegressionTable({ airports }) {
       'Intercept',
       'Amendment rate (per 1%)',
       'Military airport',
-      ...DUMMY_REGIONS.map(r => `Region: ${r}`),
+      ...presentRegions.map(r => `Region: ${r}`),
     ]
 
     return {
