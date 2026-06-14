@@ -316,26 +316,26 @@ function RegressionTable({ airports }) {
   const result = useMemo(() => {
     const rows = airports.filter(ap =>
       ap.overall_score != null &&
-      ap.lat != null && ap.lon != null &&
-      ap.amendment_pct != null
+      ap.amendment_pct != null &&
+      ap.wfo != null
     )
     if (rows.length < 10) return null
 
-    // Mean-center continuous variables for interpretability
-    const meanLat = rows.reduce((s, r) => s + r.lat, 0) / rows.length
-    const meanLon = rows.reduce((s, r) => s + r.lon, 0) / rows.length
     const meanAmd = rows.reduce((s, r) => s + r.amendment_pct, 0) / rows.length
 
-    // Only include regions present in data (zero-column dummies break matrix inversion)
-    const presentRegions = DUMMY_REGIONS.filter(reg => rows.some(r => r.climate_region === reg))
+    // WFO dummies — only WFOs with 2+ airports, sorted; first WFO = baseline
+    const wfoCounts = {}
+    for (const r of rows) wfoCounts[r.wfo] = (wfoCounts[r.wfo] || 0) + 1
+    const allWfos = Object.keys(wfoCounts).sort()
+    const [baselineWfo, ...dummyWfos] = allWfos
 
     const X = rows.map(r => [
-      1,                                                    // intercept
-      r.amendment_pct - meanAmd,                            // amendment rate (centered)
-      r.is_military ? 1 : 0,                                // military (binary)
-      ...presentRegions.map(reg => r.climate_region === reg ? 1 : 0), // region dummies
+      1,                                                          // intercept
+      r.amendment_pct - meanAmd,                                  // amendment rate (centered)
+      r.is_military ? 1 : 0,                                      // military (binary)
+      ...dummyWfos.map(wfo => r.wfo === wfo ? 1 : 0),            // WFO dummies
     ])
-    const y = rows.map(r => r.overall_score * 100)         // score in %
+    const y = rows.map(r => r.overall_score * 100)
 
     const fit = ols(X, y)
     if (!fit) return null
@@ -344,13 +344,14 @@ function RegressionTable({ airports }) {
       'Intercept',
       'Amendment rate (per 1%)',
       'Military airport',
-      ...presentRegions.map(r => `Region: ${r}`),
+      ...dummyWfos.map(w => `WFO: ${w}`),
     ]
 
     return {
       n: rows.length,
       r2: fit.r2,
-      meanLat, meanLon, meanAmd,
+      meanAmd,
+      baselineWfo,
       coefficients: labels.map((label, i) => ({ label, beta: fit.beta[i] })),
     }
   }, [airports])
@@ -361,7 +362,7 @@ function RegressionTable({ airports }) {
     </div>
   )
 
-  const { n, r2, coefficients } = result
+  const { n, r2, coefficients, baselineWfo } = result
   const maxAbs = Math.max(...coefficients.slice(1).map(c => Math.abs(c.beta)))
 
   return (
@@ -369,7 +370,7 @@ function RegressionTable({ airports }) {
       <div className="section-title">Multiple linear regression: predictors of overall score</div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>
         OLS regression with <strong style={{ color: 'var(--text)' }}>overall score (0–100%)</strong> as the outcome.
-        Continuous variables are mean-centered. Region baseline = Northeast.
+        Continuous variables are mean-centered. WFO baseline = {result.baselineWfo}.
         n = {n} airports.
       </div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>

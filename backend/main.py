@@ -774,13 +774,14 @@ def analytics():
                 Airport.lon,
                 Airport.climate_region,
                 Airport.state,
+                Airport.wfo,
                 func.count(ForecastScore.id).label("cnt"),
                 func.avg(ForecastScore.overall_score).label("overall"),
                 func.avg(cast(TAF.is_amendment, Float)).label("amd_pct"),
             )
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
             .join(TAF, ForecastScore.taf_id == TAF.id)
-            .group_by(Airport.icao, Airport.lat, Airport.lon, Airport.climate_region, Airport.state)
+            .group_by(Airport.icao, Airport.lat, Airport.lon, Airport.climate_region, Airport.state, Airport.wfo)
             .all()
         )
 
@@ -790,6 +791,7 @@ def analytics():
             "lat":             r.lat,
             "lon":             r.lon,
             "climate_region":  r.climate_region,
+            "wfo":             r.wfo,
             "is_military":     r.icao in MILITARY_STATIONS,
             "observation_count": r.cnt,
             "overall_score":   round(r.overall, 4) if r.overall is not None else None,
