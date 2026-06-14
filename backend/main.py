@@ -677,7 +677,7 @@ def leaderboard(
         order_expr = sort_col.asc().nullslast() if sort_asc else sort_col.desc().nullslast()
         rows = q.order_by(order_expr).limit(limit).all()
 
-    return [
+    result = [
         LeaderboardEntry(
             rank                   =i + 1,
             icao                   =r.icao,
