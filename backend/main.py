@@ -62,8 +62,10 @@ app.add_middleware(
 
 @app.on_event("startup")
 def _startup() -> None:
-    init_db()
     logging.basicConfig(level=logging.INFO)
+    if not _INGEST_KEY:
+        raise RuntimeError("INGEST_API_KEY environment variable is not set — refusing to start.")
+    init_db()
 
 
 _INGEST_KEY = os.getenv("INGEST_API_KEY", "")
