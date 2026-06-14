@@ -721,6 +721,7 @@ def _run_ingest(icao: str) -> None:
         stats = process_station(icao)
         logger.info("Ingest complete for %s: %s", icao, stats)
         _leaderboard_cache.clear()  # invalidate so next request gets fresh data
+        _analytics_cache.clear()
     except Exception as exc:
         logger.error("Ingest failed for %s: %s", icao, exc)
     finally:
@@ -749,6 +750,9 @@ def ingest_airport(icao: str, background_tasks: BackgroundTasks, _=Depends(_requ
 
 # ── /analytics ───────────────────────────────────────────────────────────────
 
+_analytics_cache: dict = {}
+
+
 @app.get("/analytics")
 def analytics():
     """
@@ -758,6 +762,10 @@ def analytics():
     plus server-side aggregates for region scores and score distribution.
     Much faster than fetching the full leaderboard.
     """
+    cached = _analytics_cache.get("data")
+    if cached and time.time() - cached["ts"] < _LEADERBOARD_TTL:
+        return cached["result"]
+
     with get_session() as session:
         rows = (
             session.query(
@@ -790,7 +798,9 @@ def analytics():
         for r in rows
     ]
 
-    return {"airports": airports}
+    result = {"airports": airports}
+    _analytics_cache["data"] = {"ts": time.time(), "result": result}
+    return result
 
 
 @app.post("/ingest/batch", response_model=IngestResponse)

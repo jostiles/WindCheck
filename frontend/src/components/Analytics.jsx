@@ -434,6 +434,9 @@ export default function Analytics({ onSelectAirport }) {
   if (loading) return (
     <div className="state-box" style={{ paddingTop: 80 }}>
       <div className="spinner" />
+      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
+        Crunching data across all airports — first load may take up to 30 seconds.
+      </p>
     </div>
   )
 
