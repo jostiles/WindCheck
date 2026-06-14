@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
   ReferenceLine, ResponsiveContainer,
+  ScatterChart, Scatter, ZAxis,
 } from 'recharts'
 import { fetchAnalytics } from '../api'
 
@@ -230,8 +231,9 @@ function ols(X, y) {
   const ssTot = y.reduce((s, v) => s + (v - yMean) ** 2, 0)
   const ssRes = y.reduce((s, v, i) => s + (v - yHat[i]) ** 2, 0)
   const r2    = ssTot > 0 ? 1 - ssRes / ssTot : 0
+  const residuals = y.map((v, i) => v - yHat[i])
 
-  return { beta, r2 }
+  return { beta, r2, yHat, residuals }
 }
 
 const REGIONS_ORDER = [
@@ -312,28 +314,170 @@ function ObsHistogram({ airports }) {
   )
 }
 
+function PredictedVsActualChart({ points }) {
+  function ScatterTooltip({ active, payload }) {
+    if (!active || !payload?.length) return null
+    const d = payload[0]?.payload
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.7 }}>
+        <div style={{ fontWeight: 700 }}>{d.icao}</div>
+        <div style={{ color: 'var(--muted)' }}>{d.region}</div>
+        <div>Actual: <strong>{d.actual.toFixed(1)}%</strong></div>
+        <div>Predicted: <strong>{d.predicted.toFixed(1)}%</strong></div>
+        <div style={{ color: d.residual >= 0 ? '#22c55e' : '#ef4444' }}>
+          Residual: {d.residual >= 0 ? '+' : ''}{d.residual.toFixed(1)} pp
+        </div>
+      </div>
+    )
+  }
+
+  // Group by region for coloring
+  const byRegion = {}
+  for (const p of points) {
+    if (!byRegion[p.region]) byRegion[p.region] = []
+    byRegion[p.region].push(p)
+  }
+
+  // axis range
+  const allVals = points.flatMap(p => [p.predicted, p.actual])
+  const lo = Math.floor(Math.min(...allVals) / 5) * 5
+  const hi = Math.ceil(Math.max(...allVals) / 5) * 5
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div className="section-title">Predicted vs. actual score</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
+        Each dot is one airport. Points above the diagonal are better than the model predicts; below are worse.
+      </div>
+      <ResponsiveContainer width="100%" height={400}>
+        <ScatterChart margin={{ top: 10, right: 20, bottom: 40, left: 0 }}>
+          <XAxis
+            type="number" dataKey="predicted"
+            name="Predicted"
+            domain={[lo, hi]}
+            tickFormatter={v => `${v}%`}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tickLine={false}
+            axisLine={{ stroke: 'var(--border)' }}
+            label={{ value: 'Predicted score (%)', position: 'insideBottom', offset: -20, fill: 'var(--muted)', fontSize: 11 }}
+          />
+          <YAxis
+            type="number" dataKey="actual"
+            name="Actual"
+            domain={[lo, hi]}
+            tickFormatter={v => `${v}%`}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            label={{ value: 'Actual score (%)', angle: -90, position: 'insideLeft', fill: 'var(--muted)', fontSize: 11 }}
+          />
+          <ZAxis range={[30, 30]} />
+          <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+          <ReferenceLine
+            segment={[{ x: lo, y: lo }, { x: hi, y: hi }]}
+            stroke="#64748b" strokeDasharray="4 3"
+          />
+          {Object.entries(byRegion).map(([region, pts]) => (
+            <Scatter
+              key={region}
+              name={region}
+              data={pts}
+              fill={REGION_COLORS[region] ?? '#64748b'}
+              fillOpacity={0.75}
+            />
+          ))}
+        </ScatterChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+function ResidualsHistogram({ residuals }) {
+  const data = useMemo(() => {
+    if (!residuals.length) return []
+    const size = 2 // 2 pp bins
+    const buckets = {}
+    for (const r of residuals) {
+      const b = Math.floor(r / size) * size
+      buckets[b] = (buckets[b] || 0) + 1
+    }
+    return Object.entries(buckets)
+      .map(([b, count]) => ({ bucket: Number(b), label: `${Number(b) >= 0 ? '+' : ''}${b}`, count }))
+      .sort((a, b) => a.bucket - b.bucket)
+  }, [residuals])
+
+  const mean = residuals.length ? residuals.reduce((s, v) => s + v, 0) / residuals.length : 0
+
+  function ResTooltip({ active, payload }) {
+    if (!active || !payload?.length) return null
+    const d = payload[0]?.payload
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.7 }}>
+        <div style={{ fontWeight: 700 }}>{d.label} to {d.bucket >= 0 ? '+' : ''}{d.bucket + 2} pp</div>
+        <div style={{ color: 'var(--muted)' }}>{d.count} airport{d.count !== 1 ? 's' : ''}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div className="section-title">Residuals distribution</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
+        Actual − predicted score for each airport. A well-fitting model produces residuals centered near zero with no strong skew.
+        Mean residual = <strong style={{ color: 'var(--text)' }}>{mean >= 0 ? '+' : ''}{mean.toFixed(2)} pp</strong>.
+      </div>
+      <ResponsiveContainer width="100%" height={280}>
+        <BarChart data={data} margin={{ top: 10, right: 20, bottom: 30, left: 0 }}>
+          <XAxis
+            dataKey="label"
+            tick={{ fill: 'var(--muted)', fontSize: 10 }}
+            tickLine={false}
+            axisLine={{ stroke: 'var(--border)' }}
+            interval="preserveStartEnd"
+            label={{ value: 'Residual (pp)', position: 'insideBottom', offset: -15, fill: 'var(--muted)', fontSize: 11 }}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            label={{ value: 'Airports', angle: -90, position: 'insideLeft', fill: 'var(--muted)', fontSize: 11 }}
+          />
+          <Tooltip content={<ResTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+          <ReferenceLine x="0" stroke="#64748b" strokeDasharray="4 3" />
+          <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+            {data.map(d => (
+              <Cell key={d.bucket} fill={d.bucket >= 0 ? '#22c55e' : '#ef4444'} fillOpacity={0.8} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 function RegressionTable({ airports }) {
   const result = useMemo(() => {
     const rows = airports.filter(ap =>
       ap.overall_score != null &&
       ap.amendment_pct != null &&
-      ap.wfo != null
+      ap.climate_region != null
     )
     if (rows.length < 10) return null
 
     const meanAmd = rows.reduce((s, r) => s + r.amendment_pct, 0) / rows.length
 
-    // WFO dummies — only WFOs with 2+ airports, sorted; first WFO = baseline
-    const wfoCounts = {}
-    for (const r of rows) wfoCounts[r.wfo] = (wfoCounts[r.wfo] || 0) + 1
-    const allWfos = Object.keys(wfoCounts).sort()
-    const [baselineWfo, ...dummyWfos] = allWfos
+    // Region dummies — only include regions actually present in data (avoids zero columns)
+    const presentRegions = new Set(rows.map(r => r.climate_region))
+    const activeDummies = DUMMY_REGIONS.filter(r => presentRegions.has(r))
+    // baseline = Northeast (or first in REGIONS_ORDER that is present)
+    const baseline = REGIONS_ORDER.find(r => presentRegions.has(r)) ?? REGIONS_ORDER[0]
 
     const X = rows.map(r => [
-      1,                                                          // intercept
-      r.amendment_pct - meanAmd,                                  // amendment rate (centered)
-      r.is_military ? 1 : 0,                                      // military (binary)
-      ...dummyWfos.map(wfo => r.wfo === wfo ? 1 : 0),            // WFO dummies
+      1,                                                                  // intercept
+      r.amendment_pct - meanAmd,                                          // amendment rate (centered)
+      r.is_military ? 1 : 0,                                              // military (binary)
+      ...activeDummies.map(region => r.climate_region === region ? 1 : 0), // region dummies
     ])
     const y = rows.map(r => r.overall_score * 100)
 
@@ -344,15 +488,24 @@ function RegressionTable({ airports }) {
       'Intercept',
       'Amendment rate (per 1%)',
       'Military airport',
-      ...dummyWfos.map(w => `WFO: ${w}`),
+      ...activeDummies.map(r => `Region: ${r}`),
     ]
+
+    const scatterPoints = rows.map((r, i) => ({
+      icao: r.icao,
+      region: r.climate_region,
+      predicted: fit.yHat[i],
+      actual: y[i],
+      residual: fit.residuals[i],
+    }))
 
     return {
       n: rows.length,
       r2: fit.r2,
-      meanAmd,
-      baselineWfo,
+      baseline,
       coefficients: labels.map((label, i) => ({ label, beta: fit.beta[i] })),
+      scatterPoints,
+      residuals: fit.residuals,
     }
   }, [airports])
 
@@ -362,7 +515,7 @@ function RegressionTable({ airports }) {
     </div>
   )
 
-  const { n, r2, coefficients, baselineWfo } = result
+  const { n, r2, coefficients, baseline, scatterPoints, residuals } = result
   const maxAbs = Math.max(...coefficients.slice(1).map(c => Math.abs(c.beta)))
 
   return (
@@ -370,7 +523,7 @@ function RegressionTable({ airports }) {
       <div className="section-title">Multiple linear regression: predictors of overall score</div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>
         OLS regression with <strong style={{ color: 'var(--text)' }}>overall score (0–100%)</strong> as the outcome.
-        Continuous variables are mean-centered. WFO baseline = {result.baselineWfo}.
+        Continuous variables are mean-centered. Region baseline = {baseline}.
         n = {n} airports.
       </div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
@@ -415,6 +568,9 @@ function RegressionTable({ airports }) {
       <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
         Coefficients are in percentage points. E.g. +2.5 means that factor is associated with a 2.5 pp higher score, holding all others constant.
       </div>
+
+      <PredictedVsActualChart points={scatterPoints} />
+      <ResidualsHistogram residuals={residuals} />
     </div>
   )
 }

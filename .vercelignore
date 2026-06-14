@@ -1,0 +1,6 @@
+data/
+logs/
+backend/
+*.db
+*.db-wal
+*.db-shm
