@@ -131,6 +131,9 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
       if (sortKey === 'overall') {
         va = weightedScore(a, weights) ?? -1
         vb = weightedScore(b, weights) ?? -1
+      } else if (sortKey === 'observation_count') {
+        va = a.observation_count ?? 0
+        vb = b.observation_count ?? 0
       } else {
         const nullVal = sortAsc ? Infinity : -1
         va = a[sortKey] ?? nullVal
@@ -250,7 +253,16 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                     <th title="NOAA Climate Region — one of 9 geographic groupings defined by the National Centers for Environmental Information (ncei.noaa.gov) based on climate similarity. Derived from the airport's state.">Region ⓘ</th>
                     <th title="Weather Forecast Office — the NWS office responsible for issuing TAFs at this location. Sourced from api.weather.gov/points using the airport's lat/lon.">WFO ⓘ</th>
                     <th>Mil</th>
-                    <th>Comp</th>
+                    <th
+                      className="sortable"
+                      style={{ cursor: 'pointer', userSelect: 'none', color: sortKey === 'observation_count' ? 'var(--accent2)' : '' }}
+                      onClick={() => handleColSort('observation_count')}
+                    >
+                      Comp's
+                      <span className="sort-arrow" style={{ fontSize: 10 }}>
+                        {sortKey === 'observation_count' ? (sortAsc ? ' ▲' : ' ▼') : ' ·'}
+                      </span>
+                    </th>
                     {isDiffMode
                       ? DIFF_COLS.map(col => (
                           <th
