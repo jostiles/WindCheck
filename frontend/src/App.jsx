@@ -339,7 +339,7 @@ export default function App() {
           onClick={() => setTab('welcome')}
           style={{ marginLeft: 'auto' }}
         >
-          What site did Jordan just send me?
+          What is this site about?
         </button>
         <button
           className={`tab ${tab === 'tailend' ? 'active' : ''}`}
