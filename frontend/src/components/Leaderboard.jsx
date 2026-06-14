@@ -214,7 +214,7 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
             Military only
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
-            Min observations
+            Min comparisons
             <select value={minObs} onChange={e => setMinObs(Number(e.target.value))} style={SELECT_STYLE}>
               {[1, 3, 5, 10, 20].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -238,7 +238,7 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
           : rows.length === 0
             ? <div className="state-box">
                 <div className="state-icon">📋</div>
-                <p>No airports with enough data yet.</p>
+                <p>No airports with enough comparisons yet.</p>
                 <p className="state-hint">Run the ingest pipeline to populate the database.</p>
               </div>
             : <table>
@@ -250,7 +250,7 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
                     <th title="NOAA Climate Region — one of 9 geographic groupings defined by the National Centers for Environmental Information (ncei.noaa.gov) based on climate similarity. Derived from the airport's state.">Region ⓘ</th>
                     <th title="Weather Forecast Office — the NWS office responsible for issuing TAFs at this location. Sourced from api.weather.gov/points using the airport's lat/lon.">WFO ⓘ</th>
                     <th>Mil</th>
-                    <th>Obs</th>
+                    <th>Comp</th>
                     {isDiffMode
                       ? DIFF_COLS.map(col => (
                           <th
