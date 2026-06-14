@@ -7,8 +7,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
   ReferenceLine, ResponsiveContainer,
   ScatterChart, Scatter, ZAxis,
+  LineChart, Line, Legend,
 } from 'recharts'
-import { fetchAnalytics } from '../api'
+import { fetchAnalytics, fetchLeadTime } from '../api'
 
 const REGION_COLORS = {
   'Northeast':           '#60a5fa',
@@ -575,14 +576,89 @@ function RegressionTable({ airports }) {
   )
 }
 
+const ELEMENT_LINES = [
+  { key: 'overall',     label: 'Overall',    color: '#e2e8f0', width: 2.5 },
+  { key: 'ceiling_cov', label: 'Ceiling coverage', color: '#60a5fa', width: 1.5 },
+  { key: 'ceiling_alt', label: 'Ceiling altitude',  color: '#a78bfa', width: 1.5 },
+  { key: 'visibility',  label: 'Visibility',  color: '#34d399', width: 1.5 },
+  { key: 'wind_spd',    label: 'Wind speed',  color: '#fbbf24', width: 1.5 },
+  { key: 'wind_dir',    label: 'Wind dir',    color: '#fb923c', width: 1.5 },
+]
+
+function LeadTimeDecayChart({ data }) {
+  if (!data.length) return null
+
+  function LTTooltip({ active, payload, label }) {
+    if (!active || !payload?.length) return null
+    const row = data.find(d => d.hour === label)
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.8 }}>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>+{label}h lead time</div>
+        {payload.map(p => (
+          <div key={p.dataKey} style={{ color: p.color }}>
+            {ELEMENT_LINES.find(l => l.key === p.dataKey)?.label}: <strong>{p.value?.toFixed(1)}%</strong>
+          </div>
+        ))}
+        {row && <div style={{ color: 'var(--muted)', marginTop: 4 }}>{row.n.toLocaleString()} comparisons</div>}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div className="section-title">Accuracy decay by forecast lead time</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
+        Average score vs. hours between TAF issuance and the observation being scored.
+        Longer lead times = forecast was made further in advance. Scores are expected to decline with distance.
+      </div>
+      <ResponsiveContainer width="100%" height={360}>
+        <LineChart data={data} margin={{ top: 10, right: 20, bottom: 30, left: 0 }}>
+          <XAxis
+            dataKey="hour"
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tickLine={false}
+            axisLine={{ stroke: 'var(--border)' }}
+            label={{ value: 'Lead time (hours)', position: 'insideBottom', offset: -15, fill: 'var(--muted)', fontSize: 11 }}
+          />
+          <YAxis
+            domain={[50, 100]}
+            tickFormatter={v => `${v}%`}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <Tooltip content={<LTTooltip />} />
+          <Legend
+            verticalAlign="top"
+            wrapperStyle={{ fontSize: 11, paddingBottom: 8 }}
+            formatter={(value) => ELEMENT_LINES.find(l => l.key === value)?.label ?? value}
+          />
+          {ELEMENT_LINES.map(({ key, color, width }) => (
+            <Line
+              key={key}
+              type="monotone"
+              dataKey={key}
+              stroke={color}
+              strokeWidth={width}
+              dot={false}
+              connectNulls
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 export default function Analytics({ onSelectAirport }) {
-  const [airports, setAirports] = useState([])
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState(null)
+  const [airports,  setAirports]  = useState([])
+  const [leadTime,  setLeadTime]  = useState([])
+  const [loading,   setLoading]   = useState(true)
+  const [error,     setError]     = useState(null)
 
   useEffect(() => {
-    fetchAnalytics()
-      .then(setAirports)
+    Promise.all([fetchAnalytics(), fetchLeadTime()])
+      .then(([ap, lt]) => { setAirports(ap); setLeadTime(lt) })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
@@ -610,6 +686,7 @@ export default function Analytics({ onSelectAirport }) {
       <RegionScoreChart airports={airports} />
       <ScoreHistogram airports={airports} />
       <ObsHistogram airports={airports} />
+      <LeadTimeDecayChart data={leadTime} />
       <RegressionTable airports={airports} />
     </div>
   )

@@ -14,6 +14,7 @@ export default defineConfig({
       '/map-data':    'http://localhost:8000',
       '/stats':       'http://localhost:8000',
       '/analytics':   'http://localhost:8000',
+      '/analytics/lead-time': 'http://localhost:8000',
     },
   },
 })

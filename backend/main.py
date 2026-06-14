@@ -805,6 +805,59 @@ def analytics():
     return result
 
 
+# ── /analytics/lead-time ─────────────────────────────────────────────────────
+
+_lead_time_cache: dict = {}
+
+
+@app.get("/analytics/lead-time")
+def analytics_lead_time():
+    """
+    Average TAF accuracy by forecast lead time (hours between TAF issue and observation).
+    Returns one row per integer lead hour (0–29), with overall + component scores.
+    """
+    cached = _lead_time_cache.get("data")
+    if cached and time.time() - cached["ts"] < _LEADERBOARD_TTL:
+        return cached["result"]
+
+    with get_session() as session:
+        rows = session.execute(text("""
+            SELECT
+                CAST((julianday(m.observation_time) - julianday(t.issue_time)) * 24 AS INTEGER) AS lead_hour,
+                AVG(fs.overall_score)            AS overall,
+                AVG(fs.ceiling_coverage_score)   AS ceiling_cov,
+                AVG(fs.ceiling_altitude_score)   AS ceiling_alt,
+                AVG(fs.visibility_score)         AS visibility,
+                AVG(fs.wind_speed_score)         AS wind_spd,
+                AVG(fs.wind_dir_score)           AS wind_dir,
+                COUNT(*)                         AS n
+            FROM forecast_scores fs
+            JOIN tafs   t ON fs.taf_id   = t.id
+            JOIN metars m ON fs.metar_id = m.id
+            WHERE CAST((julianday(m.observation_time) - julianday(t.issue_time)) * 24 AS INTEGER)
+                  BETWEEN 0 AND 29
+            GROUP BY lead_hour
+            ORDER BY lead_hour
+        """)).fetchall()
+
+    result = [
+        {
+            "hour":        r.lead_hour,
+            "overall":     round(r.overall * 100, 2)      if r.overall      is not None else None,
+            "ceiling_cov": round(r.ceiling_cov * 100, 2)  if r.ceiling_cov  is not None else None,
+            "ceiling_alt": round(r.ceiling_alt * 100, 2)  if r.ceiling_alt  is not None else None,
+            "visibility":  round(r.visibility * 100, 2)   if r.visibility   is not None else None,
+            "wind_spd":    round(r.wind_spd * 100, 2)     if r.wind_spd     is not None else None,
+            "wind_dir":    round(r.wind_dir * 100, 2)     if r.wind_dir     is not None else None,
+            "n":           r.n,
+        }
+        for r in rows
+    ]
+
+    _lead_time_cache["data"] = {"ts": time.time(), "result": result}
+    return result
+
+
 @app.post("/ingest/batch", response_model=IngestResponse)
 def ingest_batch(
     background_tasks: BackgroundTasks,
