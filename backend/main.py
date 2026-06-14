@@ -589,7 +589,7 @@ def airport_snapshot(icao: str):
 # ── /leaderboard ────────────────────────────────────────────────────────────
 
 _leaderboard_cache: dict = {}
-_LEADERBOARD_TTL = 300  # seconds (5 minutes)
+_LEADERBOARD_TTL = 1800  # seconds (30 minutes)
 
 
 def _leaderboard_cache_key(**kwargs) -> str:

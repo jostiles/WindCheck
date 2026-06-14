@@ -237,7 +237,12 @@ export default function Leaderboard({ onSelectAirport, weights, setWeights, defa
 
       <div className="table-wrap">
         {loading
-          ? <div className="state-box"><div className="spinner" /></div>
+          ? <div className="state-box">
+              <div className="spinner" />
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
+                First load may take up to 10 seconds while the server warms up.
+              </p>
+            </div>
           : rows.length === 0
             ? <div className="state-box">
                 <div className="state-icon">📋</div>
