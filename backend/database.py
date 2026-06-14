@@ -103,7 +103,9 @@ def _migrate_schema() -> None:
 
         # Index migrations
         index_migrations = [
-            "CREATE INDEX IF NOT EXISTS ix_score_airport_metar ON forecast_scores (airport_icao, metar_id)",
+            "CREATE INDEX IF NOT EXISTS ix_score_airport_metar   ON forecast_scores (airport_icao, metar_id)",
+            "CREATE INDEX IF NOT EXISTS ix_score_airport_icao    ON forecast_scores (airport_icao)",
+            "CREATE INDEX IF NOT EXISTS ix_taf_airport_icao      ON tafs (airport_icao)",
         ]
         for idx_sql in index_migrations:
             try:

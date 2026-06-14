@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Optional
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
@@ -587,6 +588,14 @@ def airport_snapshot(icao: str):
 
 # ── /leaderboard ────────────────────────────────────────────────────────────
 
+_leaderboard_cache: dict = {}
+_LEADERBOARD_TTL = 300  # seconds (5 minutes)
+
+
+def _leaderboard_cache_key(**kwargs) -> str:
+    return str(sorted(kwargs.items()))
+
+
 @app.get("/leaderboard", response_model=list[LeaderboardEntry])
 def leaderboard(
     sort_by:        str = Query("overall_score",
@@ -605,6 +614,14 @@ def leaderboard(
     ``sort_by`` must be one of the score column names; any other value falls
     back to ``overall_score``.
     """
+    cache_key = _leaderboard_cache_key(
+        sort_by=sort_by, min_obs=min_obs, limit=limit,
+        state=state, military=military, wfo=wfo, climate_region=climate_region,
+    )
+    cached = _leaderboard_cache.get(cache_key)
+    if cached and time.time() - cached["ts"] < _LEADERBOARD_TTL:
+        return cached["data"]
+
     # Whitelist sortable columns (score cols sort desc, diff cols sort asc)
     _sort_map = {
         "overall_score":          (func.avg(ForecastScore.overall_score),          False),
@@ -688,6 +705,9 @@ def leaderboard(
         for i, r in enumerate(rows)
     ]
 
+    _leaderboard_cache[cache_key] = {"ts": time.time(), "data": result}
+    return result
+
 
 # ── /ingest ─────────────────────────────────────────────────────────────────
 
@@ -700,6 +720,7 @@ def _run_ingest(icao: str) -> None:
     try:
         stats = process_station(icao)
         logger.info("Ingest complete for %s: %s", icao, stats)
+        _leaderboard_cache.clear()  # invalidate so next request gets fresh data
     except Exception as exc:
         logger.error("Ingest failed for %s: %s", icao, exc)
     finally:
