@@ -88,6 +88,8 @@ def _migrate_schema() -> None:
         ("forecast_scores", "visibility_diff",          "REAL"),
         ("forecast_scores", "wind_speed_diff",          "INTEGER"),
         ("forecast_scores", "wind_dir_diff",            "INTEGER"),
+        ("forecast_scores", "fc_flight_category",       "TEXT"),
+        ("forecast_scores", "ob_flight_category",       "TEXT"),
     ]
     with _engine.connect() as conn:
         for table, column, col_type in migrations:

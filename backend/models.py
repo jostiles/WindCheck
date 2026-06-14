@@ -253,6 +253,10 @@ class ForecastScore(Base):
     wind_speed_diff       = Column(Integer)  # knots
     wind_dir_diff         = Column(Integer)  # degrees 0-180
 
+    # Flight categories derived from forecasted and observed ceiling/visibility
+    fc_flight_category = Column(String(4))  # VFR | MVFR | IFR | LIFR
+    ob_flight_category = Column(String(4))  # VFR | MVFR | IFR | LIFR
+
     # 1 when the observation fell inside an active TEMPO or PROB window.
     # Stored for analysis but not used to change scores.
     tempo_active = Column(Integer, default=0)

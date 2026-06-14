@@ -436,6 +436,8 @@ def _upsert_scores(
             visibility_diff        =row.get("visibility_diff"),
             wind_speed_diff        =row.get("wind_speed_diff"),
             wind_dir_diff          =row.get("wind_dir_diff"),
+            fc_flight_category     =row.get("fc_flight_category"),
+            ob_flight_category     =row.get("ob_flight_category"),
         )
         session.add(fs)
         inserted += 1
@@ -686,6 +688,8 @@ def _score_unscored_from_db(icao: str) -> int:
                 visibility_diff        =row.get("visibility_diff"),
                 wind_speed_diff        =row.get("wind_speed_diff"),
                 wind_dir_diff          =row.get("wind_dir_diff"),
+                fc_flight_category     =row.get("fc_flight_category"),
+                ob_flight_category     =row.get("ob_flight_category"),
             )
             session.add(fs)
             inserted += 1

@@ -631,6 +631,20 @@ def score_weather_phenomena(
     return precision, recall
 
 
+_FLIGHT_CATS = ["LIFR", "IFR", "MVFR", "VFR"]
+
+def flight_category(ceiling_ft: Optional[int], vis_sm: Optional[float]) -> str:
+    """
+    Derive FAA flight category from ceiling and visibility (OR logic).
+    NULL ceiling = no ceiling = VFR ceiling tier.
+    NULL visibility = unknown = VFR visibility tier.
+    The worse of the two elements determines the category.
+    """
+    ceil_tier = _ceiling_category(ceiling_ft)   # 0=LIFR … 3=VFR
+    vis_tier  = _visibility_category(vis_sm)    # 0=LIFR … 3=VFR
+    return _FLIGHT_CATS[min(ceil_tier, vis_tier)]
+
+
 def _overall_score(scores: list[Optional[float]]) -> Optional[float]:
     """Unweighted mean of all non-None scores.  None if all are None."""
     valid = [s for s in scores if s is not None]
@@ -772,6 +786,8 @@ def score_metar_vs_taf(
         "visibility_diff":        vis_diff,
         "wind_speed_diff":        spd_diff,
         "wind_dir_diff":          dir_diff,
+        "fc_flight_category":     flight_category(fc_ceil_ft, fc_vis),
+        "ob_flight_category":     flight_category(ob_ceil_ft, ob_vis),
     }
 
 
