@@ -632,16 +632,6 @@ def leaderboard(
             .subquery()
         )
 
-        # Subquery: distinct METAR count per airport (uses ix_score_airport_metar)
-        metar_cnt_sub = (
-            session.query(
-                ForecastScore.airport_icao.label("icao"),
-                func.count(func.distinct(ForecastScore.metar_id)).label("metar_cnt"),
-            )
-            .group_by(ForecastScore.airport_icao)
-            .subquery()
-        )
-
         q = (
             session.query(
                 Airport.icao,
@@ -652,14 +642,12 @@ def leaderboard(
                 Airport.lat,
                 Airport.lon,
                 amd_sub.c.amd_pct,
-                metar_cnt_sub.c.metar_cnt,
                 *_score_agg_cols(),
             )
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
             .outerjoin(amd_sub, Airport.icao == amd_sub.c.icao)
-            .outerjoin(metar_cnt_sub, Airport.icao == metar_cnt_sub.c.icao)
-            .group_by(Airport.icao, Airport.name, Airport.state, Airport.wfo, Airport.climate_region, Airport.lat, Airport.lon, amd_sub.c.amd_pct, metar_cnt_sub.c.metar_cnt)
-            .having(metar_cnt_sub.c.metar_cnt >= min_obs)
+            .group_by(Airport.icao, Airport.name, Airport.state, Airport.wfo, Airport.climate_region, Airport.lat, Airport.lon, amd_sub.c.amd_pct)
+            .having(func.count(ForecastScore.id) >= min_obs)
         )
         if state:
             q = q.filter(Airport.state == state.upper())
@@ -683,7 +671,7 @@ def leaderboard(
             lat                    =r.lat,
             lon                    =r.lon,
             is_military            =r.icao in MILITARY_STATIONS,
-            observation_count      =r.metar_cnt or r.cnt,
+            observation_count      =r.cnt,
             overall_score          =_round(r.overall),
             ceiling_coverage_score =_round(r.ceil_cov),
             ceiling_altitude_score =_round(r.ceil_alt),
