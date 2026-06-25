@@ -9,7 +9,7 @@ import {
   ScatterChart, Scatter, ZAxis,
   LineChart, Line, Legend,
 } from 'recharts'
-import { fetchAnalytics, fetchLeadTime } from '../api'
+import { fetchAnalytics, fetchLeadTime, fetchDailyComparisons } from '../api'
 
 const REGION_COLORS = {
   'Northeast':           '#60a5fa',
@@ -650,15 +650,65 @@ function LeadTimeDecayChart({ data }) {
   )
 }
 
+function DailyComparisonsChart({ data }) {
+  if (!data.length) return null
+
+  function DCTooltip({ active, payload, label }) {
+    if (!active || !payload?.length) return null
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.7 }}>
+        <div style={{ fontWeight: 700 }}>{label}</div>
+        <div style={{ color: '#60a5fa' }}>{payload[0]?.value?.toLocaleString()} comparisons</div>
+      </div>
+    )
+  }
+
+  // Only label the first of each month on the x-axis
+  const ticks = data
+    .filter(d => d.date.endsWith('-01'))
+    .map(d => d.date)
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div className="section-title">Daily comparisons over time</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
+        Number of scored TAF-vs-METAR comparisons per day across all airports.
+      </div>
+      <ResponsiveContainer width="100%" height={280}>
+        <BarChart data={data} margin={{ top: 10, right: 20, bottom: 30, left: 0 }}>
+          <XAxis
+            dataKey="date"
+            ticks={ticks}
+            tick={{ fill: 'var(--muted)', fontSize: 10 }}
+            tickLine={false}
+            axisLine={{ stroke: 'var(--border)' }}
+            tickFormatter={d => d.slice(0, 7)}
+          />
+          <YAxis
+            allowDecimals={false}
+            tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <Tooltip content={<DCTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+          <Bar dataKey="comparisons" fill="#60a5fa" radius={[2, 2, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 export default function Analytics({ onSelectAirport }) {
   const [airports,  setAirports]  = useState([])
   const [leadTime,  setLeadTime]  = useState([])
+  const [daily,     setDaily]     = useState([])
   const [loading,   setLoading]   = useState(true)
   const [error,     setError]     = useState(null)
 
   useEffect(() => {
-    Promise.all([fetchAnalytics(), fetchLeadTime()])
-      .then(([ap, lt]) => { setAirports(ap); setLeadTime(lt) })
+    Promise.all([fetchAnalytics(), fetchLeadTime(), fetchDailyComparisons()])
+      .then(([ap, lt, dc]) => { setAirports(ap); setLeadTime(lt); setDaily(dc) })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
@@ -683,6 +733,7 @@ export default function Analytics({ onSelectAirport }) {
         Data analytics across all {airports.length} tracked airports.
       </div>
 
+      <DailyComparisonsChart data={daily} />
       <RegionScoreChart airports={airports} />
       <ScoreHistogram airports={airports} />
       <ObsHistogram airports={airports} />

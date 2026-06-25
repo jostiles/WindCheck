@@ -858,6 +858,34 @@ def analytics_lead_time():
     return result
 
 
+# ── /analytics/daily-comparisons ─────────────────────────────────────────────
+
+_daily_comparisons_cache: dict = {}
+
+
+@app.get("/analytics/daily-comparisons")
+def analytics_daily_comparisons():
+    """Daily count of scored comparisons (forecast_scores rows) by observation date."""
+    cached = _daily_comparisons_cache.get("data")
+    if cached and time.time() - cached["ts"] < _LEADERBOARD_TTL:
+        return cached["result"]
+
+    with get_session() as session:
+        rows = session.execute(text("""
+            SELECT
+                substr(m.observation_time, 1, 10) AS date,
+                COUNT(*) AS n
+            FROM forecast_scores fs
+            JOIN metars m ON fs.metar_id = m.id
+            GROUP BY date
+            ORDER BY date
+        """)).fetchall()
+
+    result = [{"date": r.date, "comparisons": r.n} for r in rows]
+    _daily_comparisons_cache["data"] = {"ts": time.time(), "result": result}
+    return result
+
+
 @app.post("/ingest/batch", response_model=IngestResponse)
 def ingest_batch(
     background_tasks: BackgroundTasks,

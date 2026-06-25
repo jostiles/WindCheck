@@ -26,7 +26,8 @@ export const fetchByHour   = (icao, maxHour = 24) =>
 export const fetchRecent   = (icao, limit = 48) =>
   _get(`/airport/${icao.toUpperCase()}/recent?limit=${limit}`)
 export const fetchAnalytics   = ()           => _get('/analytics').then(d => d.airports)
-export const fetchLeadTime    = ()           => _get('/analytics/lead-time')
+export const fetchLeadTime          = ()     => _get('/analytics/lead-time')
+export const fetchDailyComparisons  = ()     => _get('/analytics/daily-comparisons')
 export const fetchMapData     = (minObs = 1) => _get(`/map-data?min_obs=${minObs}`)
 export const fetchStats       = ()           => _get('/stats')
 export const fetchLeaderboard = (sortBy = 'overall_score', minObs = 1, state = '', military = false, wfo = '', climateRegion = '') =>
