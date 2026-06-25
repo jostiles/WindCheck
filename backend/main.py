@@ -66,6 +66,26 @@ def _startup() -> None:
     if not _INGEST_KEY:
         raise RuntimeError("INGEST_API_KEY environment variable is not set — refusing to start.")
     init_db()
+    import threading
+    threading.Thread(target=_warm_caches, daemon=True).start()
+
+
+def _warm_caches() -> None:
+    """Pre-populate caches after startup so the first user request is fast."""
+    import time as _time
+    _time.sleep(2)  # let uvicorn finish binding
+    try:
+        logger.info("Warming leaderboard cache...")
+        leaderboard()
+        logger.info("Warming analytics cache...")
+        analytics()
+        logger.info("Warming lead-time cache...")
+        analytics_lead_time()
+        logger.info("Warming daily-comparisons cache...")
+        analytics_daily_comparisons()
+        logger.info("Cache warm-up complete.")
+    except Exception as exc:
+        logger.error("Cache warm-up failed: %s", exc)
 
 
 _INGEST_KEY = os.getenv("INGEST_API_KEY", "")
