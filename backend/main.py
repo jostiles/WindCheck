@@ -31,7 +31,7 @@ from sqlalchemy import Float, cast, func, text
 
 from database import get_session, init_db
 from ingest import process_station, US_TAF_STATIONS, MILITARY_STATIONS, _taf_orm_to_dict, _metar_orm_to_dict
-from models import Airport, ForecastScore, METAR, TAF
+from models import Airport, ApiCache, ForecastScore, METAR, TAF
 
 logger = logging.getLogger(__name__)
 
@@ -606,14 +606,59 @@ def airport_snapshot(icao: str):
     }
 
 
-# ── /leaderboard ────────────────────────────────────────────────────────────
+# ── Persistent DB cache helpers ───────────────────────────────────────────────
 
-_leaderboard_cache: dict = {}
 _LEADERBOARD_TTL = 1800  # seconds (30 minutes)
 
+# In-memory layer (avoids DB round-trip within the TTL window)
+_mem_cache: dict = {}
+
+
+def _cache_get(key: str):
+    """Return cached data if still fresh (checks memory first, then DB)."""
+    mem = _mem_cache.get(key)
+    if mem and time.time() - mem["ts"] < _LEADERBOARD_TTL:
+        return mem["data"]
+
+    # Try DB
+    with get_session() as session:
+        row = session.query(ApiCache).filter(ApiCache.key == key).first()
+        if row:
+            import datetime as _dt
+            computed = _dt.datetime.fromisoformat(row.computed_at).timestamp()
+            if time.time() - computed < _LEADERBOARD_TTL:
+                _mem_cache[key] = {"ts": computed, "data": row.data}
+                return row.data
+    return None
+
+
+def _cache_set(key: str, data) -> None:
+    """Write to both memory and DB cache."""
+    import datetime as _dt
+    now_iso = _dt.datetime.utcnow().isoformat() + "Z"
+    _mem_cache[key] = {"ts": time.time(), "data": data}
+    with get_session() as session:
+        existing = session.query(ApiCache).filter(ApiCache.key == key).first()
+        if existing:
+            existing.data = data
+            existing.computed_at = now_iso
+        else:
+            session.add(ApiCache(key=key, data=data, computed_at=now_iso))
+
+
+def _cache_clear_prefix(prefix: str) -> None:
+    """Invalidate all keys starting with prefix (memory + DB)."""
+    for k in list(_mem_cache.keys()):
+        if k.startswith(prefix):
+            del _mem_cache[k]
+    with get_session() as session:
+        session.query(ApiCache).filter(ApiCache.key.like(f"{prefix}%")).delete(synchronize_session=False)
+
+
+# ── /leaderboard ────────────────────────────────────────────────────────────
 
 def _leaderboard_cache_key(**kwargs) -> str:
-    return str(sorted(kwargs.items()))
+    return "leaderboard:" + str(sorted(kwargs.items()))
 
 
 @app.get("/leaderboard", response_model=list[LeaderboardEntry])
@@ -638,9 +683,9 @@ def leaderboard(
         sort_by=sort_by, min_obs=min_obs, limit=limit,
         state=state, military=military, wfo=wfo, climate_region=climate_region,
     )
-    cached = _leaderboard_cache.get(cache_key)
-    if cached and time.time() - cached["ts"] < _LEADERBOARD_TTL:
-        return cached["data"]
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
 
     # Whitelist sortable columns (score cols sort desc, diff cols sort asc)
     _sort_map = {
@@ -725,7 +770,7 @@ def leaderboard(
         for i, r in enumerate(rows)
     ]
 
-    _leaderboard_cache[cache_key] = {"ts": time.time(), "data": result}
+    _cache_set(cache_key, result)
     return result
 
 
@@ -740,8 +785,8 @@ def _run_ingest(icao: str) -> None:
     try:
         stats = process_station(icao)
         logger.info("Ingest complete for %s: %s", icao, stats)
-        _leaderboard_cache.clear()  # invalidate so next request gets fresh data
-        _analytics_cache.clear()
+        _cache_clear_prefix("leaderboard:")
+        _cache_clear_prefix("analytics:")
     except Exception as exc:
         logger.error("Ingest failed for %s: %s", icao, exc)
     finally:
@@ -770,9 +815,6 @@ def ingest_airport(icao: str, background_tasks: BackgroundTasks, _=Depends(_requ
 
 # ── /analytics ───────────────────────────────────────────────────────────────
 
-_analytics_cache: dict = {}
-
-
 @app.get("/analytics")
 def analytics():
     """
@@ -782,9 +824,9 @@ def analytics():
     plus server-side aggregates for region scores and score distribution.
     Much faster than fetching the full leaderboard.
     """
-    cached = _analytics_cache.get("data")
-    if cached and time.time() - cached["ts"] < _LEADERBOARD_TTL:
-        return cached["result"]
+    cached = _cache_get("analytics:airports")
+    if cached is not None:
+        return cached
 
     with get_session() as session:
         rows = (
@@ -821,14 +863,11 @@ def analytics():
     ]
 
     result = {"airports": airports}
-    _analytics_cache["data"] = {"ts": time.time(), "result": result}
+    _cache_set("analytics:airports", result)
     return result
 
 
 # ── /analytics/lead-time ─────────────────────────────────────────────────────
-
-_lead_time_cache: dict = {}
-
 
 @app.get("/analytics/lead-time")
 def analytics_lead_time():
@@ -836,9 +875,9 @@ def analytics_lead_time():
     Average TAF accuracy by forecast lead time (hours between TAF issue and observation).
     Returns one row per integer lead hour (0–29), with overall + component scores.
     """
-    cached = _lead_time_cache.get("data")
-    if cached and time.time() - cached["ts"] < _LEADERBOARD_TTL:
-        return cached["result"]
+    cached = _cache_get("analytics:lead-time")
+    if cached is not None:
+        return cached
 
     with get_session() as session:
         rows = session.execute(text("""
@@ -874,21 +913,18 @@ def analytics_lead_time():
         for r in rows
     ]
 
-    _lead_time_cache["data"] = {"ts": time.time(), "result": result}
+    _cache_set("analytics:lead-time", result)
     return result
 
 
 # ── /analytics/daily-comparisons ─────────────────────────────────────────────
 
-_daily_comparisons_cache: dict = {}
-
-
 @app.get("/analytics/daily-comparisons")
 def analytics_daily_comparisons():
     """Daily count of scored comparisons (forecast_scores rows) by observation date."""
-    cached = _daily_comparisons_cache.get("data")
-    if cached and time.time() - cached["ts"] < _LEADERBOARD_TTL:
-        return cached["result"]
+    cached = _cache_get("analytics:daily-comparisons")
+    if cached is not None:
+        return cached
 
     with get_session() as session:
         rows = session.execute(text("""
@@ -902,7 +938,7 @@ def analytics_daily_comparisons():
         """)).fetchall()
 
     result = [{"date": r.date, "comparisons": r.n} for r in rows]
-    _daily_comparisons_cache["data"] = {"ts": time.time(), "result": result}
+    _cache_set("analytics:daily-comparisons", result)
     return result
 
 

@@ -277,3 +277,19 @@ class ForecastScore(Base):
             f"offset={self.forecast_hour_offset:.1f}h "
             f"overall={self.overall_score}>"
         )
+
+
+# ---------------------------------------------------------------------------
+# ApiCache
+# ---------------------------------------------------------------------------
+
+class ApiCache(Base):
+    """
+    Persistent key-value cache for expensive API responses.
+    Survives server restarts. Keyed by endpoint + parameters.
+    """
+    __tablename__ = "api_cache"
+
+    key          = Column(String, primary_key=True)
+    data         = Column(JSON,   nullable=False)
+    computed_at  = Column(String, nullable=False)  # ISO-8601 UTC
