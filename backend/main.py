@@ -60,6 +60,9 @@ app.add_middleware(
 )
 
 
+_INGEST_INTERVAL_HOURS = 6  # run a full batch ingest every N hours
+
+
 @app.on_event("startup")
 def _startup() -> None:
     logging.basicConfig(level=logging.INFO)
@@ -67,7 +70,27 @@ def _startup() -> None:
         raise RuntimeError("INGEST_API_KEY environment variable is not set — refusing to start.")
     init_db()
     import threading
-    threading.Thread(target=_warm_caches, daemon=True).start()
+    threading.Thread(target=_warm_caches,    daemon=True).start()
+    threading.Thread(target=_ingest_scheduler, daemon=True).start()
+
+
+def _ingest_scheduler() -> None:
+    """Background thread: run a full ingest of all US TAF stations every N hours.
+
+    Airports are processed sequentially with a short delay between each to avoid
+    overwhelming the aviationweather.gov API with concurrent requests.
+    """
+    import time as _time
+    _time.sleep(10)  # let startup finish before first run
+    while True:
+        logger.info("Scheduler: starting full ingest of %d stations", len(US_TAF_STATIONS))
+        for icao in US_TAF_STATIONS:
+            if icao not in _ingesting:
+                _ingesting.add(icao)
+                _run_ingest(icao)
+            _time.sleep(1.5)  # ~1.5s between airports → full cycle takes ~19 min
+        logger.info("Scheduler: full ingest complete, sleeping %dh", _INGEST_INTERVAL_HOURS)
+        _time.sleep(_INGEST_INTERVAL_HOURS * 3600)
 
 
 def _warm_caches() -> None:
