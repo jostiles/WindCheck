@@ -353,7 +353,7 @@ function PredictedVsActualChart({ points }) {
         <div>Actual: <strong>{d.actual.toFixed(1)}%</strong></div>
         <div>Predicted: <strong>{d.predicted.toFixed(1)}%</strong></div>
         <div style={{ color: d.residual >= 0 ? '#22c55e' : '#ef4444' }}>
-          Residual: {d.residual >= 0 ? '+' : ''}{d.residual.toFixed(1)} pp
+          Residual: {d.residual >= 0 ? '+' : ''}{d.residual.toFixed(1)} % pts
         </div>
       </div>
     )
@@ -423,7 +423,7 @@ function PredictedVsActualChart({ points }) {
 function ResidualsHistogram({ residuals }) {
   const data = useMemo(() => {
     if (!residuals.length) return []
-    const size = 2 // 2 pp bins
+    const size = 2 // 2 % pts bins
     const buckets = {}
     for (const r of residuals) {
       const b = Math.floor(r / size) * size
@@ -441,7 +441,7 @@ function ResidualsHistogram({ residuals }) {
     const d = payload[0]?.payload
     return (
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.7 }}>
-        <div style={{ fontWeight: 700 }}>{d.label} to {d.bucket >= 0 ? '+' : ''}{d.bucket + 2} pp</div>
+        <div style={{ fontWeight: 700 }}>{d.label} to {d.bucket >= 0 ? '+' : ''}{d.bucket + 2} % pts</div>
         <div style={{ color: 'var(--muted)' }}>{d.count} airport{d.count !== 1 ? 's' : ''}</div>
       </div>
     )
@@ -452,7 +452,7 @@ function ResidualsHistogram({ residuals }) {
       <div className="section-title">Residuals distribution</div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
         Actual − predicted score for each airport. A well-fitting model produces residuals centered near zero with no strong skew.
-        Mean residual = <strong style={{ color: 'var(--text)' }}>{mean >= 0 ? '+' : ''}{mean.toFixed(2)} pp</strong>.
+        Mean residual = <strong style={{ color: 'var(--text)' }}>{mean >= 0 ? '+' : ''}{mean.toFixed(2)} % pts</strong>.
       </div>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={data} margin={{ top: 10, right: 20, bottom: 30, left: 0 }}>
@@ -594,7 +594,7 @@ function RegressionTable({ airports }) {
         </table>
       </div>
       <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
-        Coefficients are in percentage points. E.g. +2.5 means that factor is associated with a 2.5 pp higher score, holding all others constant.
+        Coefficients are in % pts. E.g. +2.5 means that factor is associated with a 2.5 % pts higher score, holding all others constant.
       </div>
 
       <PredictedVsActualChart points={scatterPoints} />
@@ -824,7 +824,7 @@ function MilitaryAnalysis({ airports }) {
         <div style={{ color: '#60a5fa' }}>Civilian: <strong>{payload.find(p => p.dataKey === 'Civilian')?.value?.toFixed(1)}%</strong></div>
         <div style={{ color: '#fbbf24' }}>Military: <strong>{payload.find(p => p.dataKey === 'Military')?.value?.toFixed(1)}%</strong></div>
         {s && <div style={{ color: s.gap >= 0 ? '#ef4444' : '#22c55e', marginTop: 4 }}>
-          Gap: {s.gap >= 0 ? '+' : ''}{s.gap.toFixed(1)} pp · Cohen's d = {s.d.toFixed(2)} ({effectLabel(s.d)})
+          Gap: {s.gap >= 0 ? '+' : ''}{s.gap.toFixed(1)} % pts · Cohen's d = {s.d.toFixed(2)} ({effectLabel(s.d)})
         </div>}
       </div>
     )
@@ -870,16 +870,16 @@ function MilitaryAnalysis({ airports }) {
         <div>
           Raw gap: military fields score{' '}
           <strong style={{ color: overall.gap >= 0 ? '#ef4444' : '#22c55e' }}>
-            {overall.gap >= 0 ? '' : '+'}{(-overall.gap).toFixed(1)} pp {overall.gap >= 0 ? 'lower' : 'higher'}
+            {overall.gap >= 0 ? '' : '+'}{(-overall.gap).toFixed(1)} % pts {overall.gap >= 0 ? 'lower' : 'higher'}
           </strong>{' '}
           than civilian (p {fmtP(overall.p)}, Cohen's d = {overall.d.toFixed(2)} — <em>{effectLabel(overall.d)}</em> effect).
         </div>
         {adjCoeff != null && rawCoeff != null && (
           <div style={{ marginTop: 6 }}>
             After controlling for climate region: military coefficient changes from{' '}
-            <strong style={{ color: rawCoeff >= 0 ? '#22c55e' : '#ef4444' }}>{rawCoeff >= 0 ? '+' : ''}{rawCoeff.toFixed(2)} pp</strong>{' '}
+            <strong style={{ color: rawCoeff >= 0 ? '#22c55e' : '#ef4444' }}>{rawCoeff >= 0 ? '+' : ''}{rawCoeff.toFixed(2)} % pts</strong>{' '}
             to{' '}
-            <strong style={{ color: adjCoeff >= 0 ? '#22c55e' : '#ef4444' }}>{adjCoeff >= 0 ? '+' : ''}{adjCoeff.toFixed(2)} pp</strong>
+            <strong style={{ color: adjCoeff >= 0 ? '#22c55e' : '#ef4444' }}>{adjCoeff >= 0 ? '+' : ''}{adjCoeff.toFixed(2)} % pts</strong>
             {Math.abs(adjCoeff - rawCoeff) > 0.5
               ? ' — geography explains part of the gap.'
               : ' — geography is not a major confound.'}
@@ -933,7 +933,7 @@ function MilitaryAnalysis({ airports }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Component', 'Civilian avg', 'Military avg', 'Gap (pp)', "Cohen's d", 'Effect', 'p-value'].map(h => (
+                {['Component', 'Civilian avg', 'Military avg', 'Gap (% pts)', "Cohen's d", 'Effect', 'p-value'].map(h => (
                   <th key={h} style={{ textAlign: h === 'Component' ? 'left' : 'right', padding: '6px 12px', color: 'var(--muted)', fontWeight: 600 }}>{h}</th>
                 ))}
               </tr>
@@ -990,7 +990,7 @@ function MilitaryAnalysis({ airports }) {
                     <div style={{ width: barW, height: '100%', background: barColor, borderRadius: 4 }} />
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 700, color: barColor, minWidth: 60, fontVariantNumeric: 'tabular-nums' }}>
-                    {coeff >= 0 ? '+' : ''}{coeff.toFixed(2)} pp
+                    {coeff >= 0 ? '+' : ''}{coeff.toFixed(2)} % pts
                   </span>
                 </div>
               </div>
