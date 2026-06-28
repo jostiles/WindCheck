@@ -74,18 +74,18 @@ def _warm_caches() -> None:
     """Pre-populate caches after startup so the first user request is fast."""
     import time as _time
     _time.sleep(2)  # let uvicorn finish binding
-    try:
-        logger.info("Warming leaderboard cache...")
-        leaderboard()
-        logger.info("Warming analytics cache...")
-        analytics()
-        logger.info("Warming lead-time cache...")
-        analytics_lead_time()
-        logger.info("Warming daily-comparisons cache...")
-        analytics_daily_comparisons()
-        logger.info("Cache warm-up complete.")
-    except Exception as exc:
-        logger.error("Cache warm-up failed: %s", exc)
+    for name, fn, kwargs in [
+        ("leaderboard",          leaderboard,                 {"sort_by": "overall_score", "min_obs": 5, "limit": 1000, "state": None, "military": False, "wfo": None, "climate_region": None}),
+        ("analytics",            analytics,                   {}),
+        ("lead-time",            analytics_lead_time,         {}),
+        ("daily-comparisons",    analytics_daily_comparisons, {}),
+    ]:
+        try:
+            logger.info("Warming %s cache...", name)
+            fn(**kwargs)
+            logger.info("Warmed %s cache.", name)
+        except Exception as exc:
+            logger.error("Cache warm-up failed for %s: %s", name, exc, exc_info=True)
 
 
 _INGEST_KEY = os.getenv("INGEST_API_KEY", "")
@@ -652,7 +652,7 @@ def _cache_set(key: str, data) -> None:
             existing.data = serializable
             existing.computed_at = now_iso
         else:
-            session.add(ApiCache(key=key, data=data, computed_at=now_iso))
+            session.add(ApiCache(key=key, data=serializable, computed_at=now_iso))
 
 
 def _cache_clear_prefix(prefix: str) -> None:
@@ -848,6 +848,11 @@ def analytics():
                 Airport.wfo,
                 func.count(ForecastScore.id).label("cnt"),
                 func.avg(ForecastScore.overall_score).label("overall"),
+                func.avg(ForecastScore.ceiling_coverage_score).label("ceil_cov"),
+                func.avg(ForecastScore.ceiling_altitude_score).label("ceil_alt"),
+                func.avg(ForecastScore.visibility_score).label("visibility"),
+                func.avg(ForecastScore.wind_speed_score).label("wind_speed"),
+                func.avg(ForecastScore.wind_dir_score).label("wind_dir"),
                 func.avg(cast(TAF.is_amendment, Float)).label("amd_pct"),
             )
             .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
@@ -858,15 +863,20 @@ def analytics():
 
     airports = [
         {
-            "icao":            r.icao,
-            "lat":             r.lat,
-            "lon":             r.lon,
-            "climate_region":  r.climate_region,
-            "wfo":             r.wfo,
-            "is_military":     r.icao in MILITARY_STATIONS,
-            "observation_count": r.cnt,
-            "overall_score":   round(r.overall, 4) if r.overall is not None else None,
-            "amendment_pct":   round(r.amd_pct * 100, 2) if r.amd_pct is not None else None,
+            "icao":                   r.icao,
+            "lat":                    r.lat,
+            "lon":                    r.lon,
+            "climate_region":         r.climate_region,
+            "wfo":                    r.wfo,
+            "is_military":            r.icao in MILITARY_STATIONS,
+            "observation_count":      r.cnt,
+            "overall_score":          round(r.overall,    4) if r.overall    is not None else None,
+            "ceiling_coverage_score": round(r.ceil_cov,   4) if r.ceil_cov   is not None else None,
+            "ceiling_altitude_score": round(r.ceil_alt,   4) if r.ceil_alt   is not None else None,
+            "visibility_score":       round(r.visibility, 4) if r.visibility is not None else None,
+            "wind_speed_score":       round(r.wind_speed, 4) if r.wind_speed is not None else None,
+            "wind_dir_score":         round(r.wind_dir,   4) if r.wind_dir   is not None else None,
+            "amendment_pct":          round(r.amd_pct * 100, 2) if r.amd_pct is not None else None,
         }
         for r in rows
     ]
