@@ -635,12 +635,21 @@ def _cache_get(key: str):
 def _cache_set(key: str, data) -> None:
     """Write to both memory and DB cache."""
     import datetime as _dt
+    import json as _json
+    from pydantic import BaseModel as _BM
     now_iso = _dt.datetime.utcnow().isoformat() + "Z"
+    # Serialize Pydantic models to plain dicts for JSON storage
+    if isinstance(data, list) and data and isinstance(data[0], _BM):
+        serializable = [item.model_dump() for item in data]
+    elif isinstance(data, _BM):
+        serializable = data.model_dump()
+    else:
+        serializable = data
     _mem_cache[key] = {"ts": time.time(), "data": data}
     with get_session() as session:
         existing = session.query(ApiCache).filter(ApiCache.key == key).first()
         if existing:
-            existing.data = data
+            existing.data = serializable
             existing.computed_at = now_iso
         else:
             session.add(ApiCache(key=key, data=data, computed_at=now_iso))
