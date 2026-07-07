@@ -720,8 +720,30 @@ function DailyComparisonsChart({ data }) {
           />
           <Tooltip content={<DCTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
           <Bar dataKey="comparisons" fill="#60a5fa" radius={[2, 2, 0, 0]} />
+          <ReferenceLine
+            x="2026-05-01"
+            stroke="var(--muted)"
+            strokeDasharray="4 3"
+            label={{ value: 'DB import', position: 'insideTopRight', fill: 'var(--muted)', fontSize: 10, dy: -4 }}
+          />
+          <ReferenceLine
+            x="2026-05-20"
+            stroke="#f59e0b"
+            strokeDasharray="4 3"
+            label={{ value: '5-min obs', position: 'insideTopRight', fill: '#f59e0b', fontSize: 10, dy: -4 }}
+          />
         </BarChart>
       </ResponsiveContainer>
+      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10, lineHeight: 1.6 }}>
+        <span style={{ color: 'var(--muted)', marginRight: 16 }}>
+          <span style={{ borderBottom: '2px dashed var(--muted)', paddingBottom: 1, marginRight: 4 }}>May 1</span>
+          Historical data imported from local DB — richer METAR coverage than live ingest alone.
+        </span>
+        <span style={{ color: '#f59e0b' }}>
+          <span style={{ borderBottom: '2px dashed #f59e0b', paddingBottom: 1, marginRight: 4 }}>May 20–30</span>
+          Backfill captured 5-minute ASOS automated observations while those dates were still recent.
+        </span>
+      </div>
     </div>
   )
 }

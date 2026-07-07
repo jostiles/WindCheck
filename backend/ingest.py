@@ -38,7 +38,7 @@ import httpx
 
 from database import get_session, init_db
 from fetch import fetch_metars, fetch_tafs, BASE_URL, REQUEST_TIMEOUT
-from models import Airport, TAF, TAFPeriod, METAR, ForecastScore
+from models import Airport, TAF, TAFPeriod, METAR, ForecastScore, AirportStats, LeadTimeStats, DailyStats
 from scoring import process_airport
 
 logger = logging.getLogger(__name__)
@@ -581,6 +581,117 @@ def _metar_orm_to_dict(m_orm: METAR) -> dict:
     }
 
 
+def _update_airport_stats(session, icao: str, new_scores: list[dict]) -> None:
+    """
+    Incrementally update AirportStats, LeadTimeStats, and DailyStats for
+    newly inserted score dicts. Each dict must have standard score keys plus:
+      _obs_date  str  "YYYY-MM-DD"  (observation date)
+    """
+    if not new_scores:
+        return
+
+    # --- AirportStats ---
+    stats = session.get(AirportStats, icao)
+    if stats is None:
+        stats = AirportStats(airport_icao=icao)
+        session.add(stats)
+
+    for row in new_scores:
+        stats.score_count += 1
+
+        v = row.get("overall_score")
+        if v is not None:
+            stats.overall_sum   += v
+            stats.overall_count += 1
+
+        v = row.get("ceiling_coverage_score")
+        if v is not None:
+            stats.ceiling_coverage_sum   += v
+            stats.ceiling_coverage_count += 1
+
+        v = row.get("ceiling_altitude_score")
+        if v is not None:
+            stats.ceiling_altitude_sum   += v
+            stats.ceiling_altitude_count += 1
+
+        v = row.get("visibility_score")
+        if v is not None:
+            stats.visibility_sum   += v
+            stats.visibility_count += 1
+
+        v = row.get("wind_speed_score")
+        if v is not None:
+            stats.wind_speed_sum   += v
+            stats.wind_speed_count += 1
+
+        v = row.get("wind_dir_score")
+        if v is not None:
+            stats.wind_dir_sum   += v
+            stats.wind_dir_count += 1
+
+        v = row.get("ceiling_coverage_diff")
+        if v is not None:
+            stats.ceiling_coverage_diff_sum   += v
+            stats.ceiling_coverage_diff_count += 1
+
+        v = row.get("ceiling_altitude_diff")
+        if v is not None:
+            stats.ceiling_altitude_diff_sum   += v
+            stats.ceiling_altitude_diff_count += 1
+
+        v = row.get("visibility_diff")
+        if v is not None:
+            stats.visibility_diff_sum   += v
+            stats.visibility_diff_count += 1
+
+        v = row.get("wind_speed_diff")
+        if v is not None:
+            stats.wind_speed_diff_sum   += v
+            stats.wind_speed_diff_count += 1
+
+        v = row.get("wind_dir_diff")
+        if v is not None:
+            stats.wind_dir_diff_sum   += v
+            stats.wind_dir_diff_count += 1
+
+    # --- LeadTimeStats (bucket by integer lead hour 0-29) ---
+    for row in new_scores:
+        offset = row.get("forecast_hour_offset")
+        if offset is None:
+            continue
+        lead_hour = int(offset)
+        if not (0 <= lead_hour <= 29):
+            continue
+        lt = session.get(LeadTimeStats, lead_hour)
+        if lt is None:
+            lt = LeadTimeStats(lead_hour=lead_hour)
+            session.add(lt)
+        lt.score_count += 1
+        for col, scol, ccol in [
+            ("overall_score",          "overall_sum",          "overall_count"),
+            ("ceiling_coverage_score", "ceiling_coverage_sum", "ceiling_coverage_count"),
+            ("ceiling_altitude_score", "ceiling_altitude_sum", "ceiling_altitude_count"),
+            ("visibility_score",       "visibility_sum",       "visibility_count"),
+            ("wind_speed_score",       "wind_speed_sum",       "wind_speed_count"),
+            ("wind_dir_score",         "wind_dir_sum",         "wind_dir_count"),
+        ]:
+            v = row.get(col)
+            if v is not None:
+                setattr(lt, scol, getattr(lt, scol) + v)
+                setattr(lt, ccol, getattr(lt, ccol) + 1)
+
+    # --- DailyStats ---
+    for row in new_scores:
+        obs_date = row.get("_obs_date")
+        if not obs_date:
+            continue
+        ds = session.get(DailyStats, obs_date)
+        if ds is None:
+            ds = DailyStats(date=obs_date)
+            session.add(ds)
+        ds.score_count += 1
+
+
 def _score_unscored_from_db(icao: str) -> int:
     """
     Score all (METAR, TAF) pairs for ``icao`` that don't yet have a
@@ -665,6 +776,7 @@ def _score_unscored_from_db(icao: str) -> int:
 
             score["_metar_id"]  = metar_id
             score["_taf_id"]    = taf_id
+            score["_obs_date"]  = obs_str[:10]  # "YYYY-MM-DD"
             new_scores.append((metar_id, taf_id, score))
 
         # Insert in a single flush
@@ -693,6 +805,137 @@ def _score_unscored_from_db(icao: str) -> int:
             )
             session.add(fs)
             inserted += 1
+
+        _update_airport_stats(session, icao, [r for _, _, r in new_scores])
+
+    return inserted
+
+
+def _score_unscored_for_date(icao: str, target_date) -> int:
+    """
+    Like _score_unscored_from_db but scoped to METARs on a single date.
+
+    Only loads METARs whose observation_time falls on target_date (UTC).
+    Still loads all stored TAFs for the airport (needed to find the covering
+    TAF, which may have been issued the day before).
+
+    This is much faster than _score_unscored_from_db when the DB is large
+    because the METAR scan is O(observations_on_date) instead of O(all_metars).
+    """
+    from scoring import score_metar_vs_taf, _iso
+    from datetime import date as _date, timedelta
+
+    if isinstance(target_date, _date):
+        date_str_start = target_date.isoformat()                        # e.g. "2026-01-15"
+        date_str_end   = (target_date + timedelta(days=1)).isoformat()  # e.g. "2026-01-16"
+    else:
+        raise TypeError("target_date must be a datetime.date")
+
+    inserted = 0
+
+    with get_session() as session:
+        from sqlalchemy.orm import joinedload
+        from sqlalchemy import and_
+
+        # Load only TAFs for this airport (needed to find covering TAF)
+        db_tafs = (
+            session.query(TAF)
+            .options(joinedload(TAF.periods))
+            .filter_by(airport_icao=icao)
+            .all()
+        )
+
+        # Load only METARs for the target date
+        db_metars = (
+            session.query(METAR)
+            .filter(
+                METAR.airport_icao == icao,
+                METAR.observation_time >= date_str_start,
+                METAR.observation_time <  date_str_end,
+            )
+            .all()
+        )
+
+        if not db_tafs or not db_metars:
+            return 0
+
+        taf_dicts = [_taf_orm_to_dict(t) for t in db_tafs]
+
+        # Only check existing pairs for these specific METARs (much smaller set)
+        metar_ids = [m.id for m in db_metars]
+        existing_pairs: set[tuple[int, int]] = {
+            (fs.metar_id, fs.taf_id)
+            for fs in session.query(ForecastScore.metar_id, ForecastScore.taf_id)
+                              .filter(
+                                  ForecastScore.airport_icao == icao,
+                                  ForecastScore.metar_id.in_(metar_ids),
+                              )
+                              .all()
+        }
+
+        new_scores: list[tuple[int, int, dict]] = []
+
+        for m_orm in db_metars:
+            obs_str = m_orm.observation_time
+            if not obs_str:
+                continue
+            obs_time = _iso(obs_str)
+
+            best_taf: Optional[dict] = None
+            for td in taf_dicts:
+                tf     = _iso(td["valid_from"])
+                tt     = _iso(td["valid_to"])
+                issued = _iso(td["issue_time"])
+                if tf <= obs_time < tt and issued <= obs_time:
+                    if best_taf is None or issued > _iso(best_taf["issue_time"]):
+                        best_taf = td
+
+            if best_taf is None:
+                continue
+
+            metar_id = m_orm.id
+            taf_id   = best_taf["id"]
+
+            if (metar_id, taf_id) in existing_pairs:
+                continue
+
+            metar_dict = _metar_orm_to_dict(m_orm)
+            score = score_metar_vs_taf(metar_dict, best_taf, best_taf["periods"])
+            if score is None:
+                continue
+
+            score["_metar_id"] = metar_id
+            score["_taf_id"]   = taf_id
+            score["_obs_date"] = obs_str[:10]  # "YYYY-MM-DD"
+            new_scores.append((metar_id, taf_id, score))
+
+        for metar_id, taf_id, row in new_scores:
+            fs = ForecastScore(
+                airport_icao           =icao,
+                metar_id               =metar_id,
+                taf_id                 =taf_id,
+                forecast_hour_offset   =row["forecast_hour_offset"],
+                ceiling_coverage_score =row.get("ceiling_coverage_score"),
+                ceiling_altitude_score =row.get("ceiling_altitude_score"),
+                visibility_score       =row.get("visibility_score"),
+                wind_speed_score       =row.get("wind_speed_score"),
+                wind_dir_score         =row.get("wind_dir_score"),
+                wx_precision           =row.get("wx_precision"),
+                wx_recall              =row.get("wx_recall"),
+                overall_score          =row.get("overall_score"),
+                tempo_active           =row.get("tempo_active", 0),
+                ceiling_coverage_diff  =row.get("ceiling_coverage_diff"),
+                ceiling_altitude_diff  =row.get("ceiling_altitude_diff"),
+                visibility_diff        =row.get("visibility_diff"),
+                wind_speed_diff        =row.get("wind_speed_diff"),
+                wind_dir_diff          =row.get("wind_dir_diff"),
+                fc_flight_category     =row.get("fc_flight_category"),
+                ob_flight_category     =row.get("ob_flight_category"),
+            )
+            session.add(fs)
+            inserted += 1
+
+        _update_airport_stats(session, icao, [r for _, _, r in new_scores])
 
     return inserted
 

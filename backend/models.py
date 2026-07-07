@@ -280,6 +280,90 @@ class ForecastScore(Base):
 
 
 # ---------------------------------------------------------------------------
+# AirportStats  (pre-aggregated rolling totals for fast leaderboard)
+# ---------------------------------------------------------------------------
+
+class AirportStats(Base):
+    """
+    Pre-aggregated running sums + counts per airport.
+    Updated incrementally when new ForecastScore rows are inserted.
+    Leaderboard reads airport_icao, sum/count instead of AVG() over all rows.
+    """
+    __tablename__ = "airport_stats"
+
+    airport_icao = Column(String(4), ForeignKey("airports.icao"), primary_key=True)
+
+    score_count = Column(Integer, default=0, nullable=False)
+
+    # Running sums for score columns (NULL scores are excluded from sum+count)
+    overall_sum              = Column(Float, default=0.0, nullable=False)
+    overall_count            = Column(Integer, default=0, nullable=False)
+    ceiling_coverage_sum     = Column(Float, default=0.0, nullable=False)
+    ceiling_coverage_count   = Column(Integer, default=0, nullable=False)
+    ceiling_altitude_sum     = Column(Float, default=0.0, nullable=False)
+    ceiling_altitude_count   = Column(Integer, default=0, nullable=False)
+    visibility_sum           = Column(Float, default=0.0, nullable=False)
+    visibility_count         = Column(Integer, default=0, nullable=False)
+    wind_speed_sum           = Column(Float, default=0.0, nullable=False)
+    wind_speed_count         = Column(Integer, default=0, nullable=False)
+    wind_dir_sum             = Column(Float, default=0.0, nullable=False)
+    wind_dir_count           = Column(Integer, default=0, nullable=False)
+
+    # Running sums for diff columns
+    ceiling_coverage_diff_sum   = Column(Float, default=0.0, nullable=False)
+    ceiling_coverage_diff_count = Column(Integer, default=0, nullable=False)
+    ceiling_altitude_diff_sum   = Column(Float, default=0.0, nullable=False)
+    ceiling_altitude_diff_count = Column(Integer, default=0, nullable=False)
+    visibility_diff_sum         = Column(Float, default=0.0, nullable=False)
+    visibility_diff_count       = Column(Integer, default=0, nullable=False)
+    wind_speed_diff_sum         = Column(Float, default=0.0, nullable=False)
+    wind_speed_diff_count       = Column(Integer, default=0, nullable=False)
+    wind_dir_diff_sum           = Column(Float, default=0.0, nullable=False)
+    wind_dir_diff_count         = Column(Integer, default=0, nullable=False)
+
+    # TAF amendment tracking
+    taf_count       = Column(Integer, default=0, nullable=False)
+    amendment_count = Column(Integer, default=0, nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# LeadTimeStats  (pre-aggregated by forecast hour offset 0-29)
+# ---------------------------------------------------------------------------
+
+class LeadTimeStats(Base):
+    """Pre-aggregated scores bucketed by integer forecast lead hour (0–29)."""
+    __tablename__ = "lead_time_stats"
+
+    lead_hour = Column(Integer, primary_key=True)  # 0–29
+
+    overall_sum            = Column(Float,   default=0.0, nullable=False)
+    overall_count          = Column(Integer, default=0,   nullable=False)
+    ceiling_coverage_sum   = Column(Float,   default=0.0, nullable=False)
+    ceiling_coverage_count = Column(Integer, default=0,   nullable=False)
+    ceiling_altitude_sum   = Column(Float,   default=0.0, nullable=False)
+    ceiling_altitude_count = Column(Integer, default=0,   nullable=False)
+    visibility_sum         = Column(Float,   default=0.0, nullable=False)
+    visibility_count       = Column(Integer, default=0,   nullable=False)
+    wind_speed_sum         = Column(Float,   default=0.0, nullable=False)
+    wind_speed_count       = Column(Integer, default=0,   nullable=False)
+    wind_dir_sum           = Column(Float,   default=0.0, nullable=False)
+    wind_dir_count         = Column(Integer, default=0,   nullable=False)
+    score_count            = Column(Integer, default=0,   nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# DailyStats  (pre-aggregated score count per UTC date)
+# ---------------------------------------------------------------------------
+
+class DailyStats(Base):
+    """Pre-aggregated count of scored comparisons per observation date."""
+    __tablename__ = "daily_stats"
+
+    date        = Column(String(10), primary_key=True)  # "YYYY-MM-DD"
+    score_count = Column(Integer, default=0, nullable=False)
+
+
+# ---------------------------------------------------------------------------
 # ApiCache
 # ---------------------------------------------------------------------------
 
