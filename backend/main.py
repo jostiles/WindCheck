@@ -99,6 +99,7 @@ def _warm_caches() -> None:
     _time.sleep(2)  # let uvicorn finish binding
     for name, fn, kwargs in [
         ("leaderboard",          leaderboard,                 {"sort_by": "overall_score", "min_obs": 5, "limit": 1000, "state": None, "military": False, "wfo": None, "climate_region": None}),
+        ("map-data",             map_data,                    {"min_obs": 1}),
         ("analytics",            analytics,                   {}),
         ("lead-time",            analytics_lead_time,         {}),
         ("daily-comparisons",    analytics_daily_comparisons, {}),
@@ -503,36 +504,41 @@ def airport_recent(
 def map_data(min_obs: int = Query(1, ge=1)):
     """
     Return all airports with scored observations for map rendering.
-    Includes lat/lon and overall accuracy score.
+    Reads from airport_stats for instant response.
     """
+    cache_key = f"map-data:{min_obs}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     with get_session() as session:
-        rows = (
-            session.query(
-                Airport.icao,
-                Airport.name,
-                Airport.lat,
-                Airport.lon,
-                func.count(ForecastScore.id).label("cnt"),
-                func.avg(ForecastScore.overall_score).label("overall"),
+        pairs = (
+            session.query(AirportStats, Airport)
+            .join(Airport, Airport.icao == AirportStats.airport_icao)
+            .filter(
+                AirportStats.score_count >= min_obs,
+                Airport.lat.isnot(None),
+                Airport.lon.isnot(None),
             )
-            .join(ForecastScore, Airport.icao == ForecastScore.airport_icao)
-            .filter(Airport.lat.isnot(None), Airport.lon.isnot(None))
-            .group_by(Airport.icao, Airport.name, Airport.lat, Airport.lon)
-            .having(func.count(ForecastScore.id) >= min_obs)
             .all()
         )
+        result = [
+            {
+                "icao":              airport.icao,
+                "name":              airport.name,
+                "lat":               airport.lat,
+                "lon":               airport.lon,
+                "observation_count": stats.score_count,
+                "overall_score":     _round(
+                    stats.overall_sum / stats.overall_count
+                    if stats.overall_count else None
+                ),
+            }
+            for stats, airport in pairs
+        ]
 
-    return [
-        {
-            "icao":              r.icao,
-            "name":              r.name,
-            "lat":               r.lat,
-            "lon":               r.lon,
-            "observation_count": r.cnt,
-            "overall_score":     _round(r.overall),
-        }
-        for r in rows
-    ]
+    _cache_set(cache_key, result)
+    return result
 
 
 # ── /airport/{icao}/snapshot ────────────────────────────────────────────────
@@ -810,6 +816,7 @@ def _run_ingest(icao: str) -> None:
         logger.info("Ingest complete for %s: %s", icao, stats)
         _cache_clear_prefix("leaderboard:")
         _cache_clear_prefix("analytics:")
+        _cache_clear_prefix("map-data:")
     except Exception as exc:
         logger.error("Ingest failed for %s: %s", icao, exc)
     finally:
@@ -1276,6 +1283,7 @@ def admin_clear_cache(_=Depends(_require_ingest_key)):
     """Invalidate all in-memory and DB caches (leaderboard + analytics)."""
     _cache_clear_prefix("leaderboard:")
     _cache_clear_prefix("analytics:")
+    _cache_clear_prefix("map-data:")
     return {"status": "cleared"}
 
 
